@@ -52,7 +52,7 @@ res1 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lags = list("concern" = 1, "incshare10" = 1),
         diffs = c("incshare10", "urate"), 
         ec = TRUE, simulate = FALSE)
-summary(res1$model)
+summary(res1)
 
 ## ------------------------------------------------------------------------
 dynardl.auto.correlated(res1)
@@ -63,7 +63,7 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = FALSE)
-summary(res2$model)
+summary(res2)
 
 ## ------------------------------------------------------------------------
 dynardl.auto.correlated(res2)
@@ -94,7 +94,7 @@ pssbounds(res2)
 #          diffs = c("incshare10", "urate"),
 #          lagdiffs = list("concern" = 1),
 #          ec = TRUE, simulate = FALSE)
-#  summary(res2$model)
+#  summary(res2)
 
 ## ------------------------------------------------------------------------
 res2 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -102,8 +102,11 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE,
-        shockvar = "incshare10", graph = TRUE)
+        shockvar = "incshare10")
 summary(res2$model)
+
+## ------------------------------------------------------------------------
+area.simulation.plot(res2)
 
 ## ------------------------------------------------------------------------
 res3 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -111,9 +114,9 @@ res3 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30,
-        shockvar = "incshare10", graph = FALSE)
-area.simulation.graph(res3)
-spike.simulation.graph(res3)
+        shockvar = "incshare10")
+area.simulation.plot(res3)
+spike.simulation.plot(res3)
 
 ## ------------------------------------------------------------------------
 res3$model
@@ -126,6 +129,15 @@ res4 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30, sims = 10000,
-        shockvar = "incshare10", graph = FALSE)
-area.simulation.graph(res4, changes = TRUE, bw = TRUE)
+        shockvar = "incshare10")
+area.simulation.plot(res4, response = "mean.changes", bw = TRUE)
+
+## ------------------------------------------------------------------------
+res5 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
+        lags = list("concern" = 1, "incshare10" = 1),
+        diffs = c("incshare10", "urate"), 
+        lagdiffs = list("concern" = 1),
+        ec = TRUE, simulate = TRUE, range = 30,
+        shockvar = "incshare10", qoi = "median")
+area.simulation.plot(res5)
 

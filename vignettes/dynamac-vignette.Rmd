@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 
 Autoregressive distributed lag (ARDL) models are an integral part of estimating scientific processes over time. However, as we extend their usefulness by adding richness in dynamic specifications (through multiple lags of variables, either in levels or differences, or lags of the dependent variable), we really begin to challenge our ability to draw meaningful inferences from coefficients alone. Variables may appear in multiple time periods, in multiple forms, and might even be filtered through lagged values of the dependent variable. Coefficients tell us about the immediate effect of some variable but really have little to say about the long-run effect. 
 
-There is a better solution. Instead of performing intense operations to develop a closed-form or algebraic solution, we can rely on the power of computing to *simulate* the over-time response in the dependent variable of some model, given a corresponding change in an $x$ variable. We often call these "changes" in $x$ variables, and the associated response in the dependent variable $y$, a "counterfactual response" (a simulated response to a "shock"" we control).
+There is a better solution. Instead of performing intense operations to develop a closed-form or algebraic solution, we can rely on the power of computing to *simulate* the over-time response in the dependent variable of some model, given a corresponding change in an $x$ variable. We often call these "changes" in $x$ variables, and the associated response in the dependent variable $y$, a "counterfactual response" (a simulated response to a "shock" we control).
 
 dynamac helps simulate these counterfactuals. More generally, though, it is built to make using and drawing inferences from single-equation ARDL models as easy as possible. Moreover, it helps users implement the useful cointegration test from Pearson, Shin, and Smith [-@pesaran2001bounds]: the ARDL-bounds testing procedure.
 
@@ -134,7 +134,7 @@ res1 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lags = list("concern" = 1, "incshare10" = 1),
         diffs = c("incshare10", "urate"), 
         ec = TRUE, simulate = FALSE)
-summary(res1$model)
+summary(res1)
 ```
 
 Next we need to ensure that the residuals from this model are white noise. To help with this, we also introduce `dynardl.auto.correlated`. This expects a `dynardl` model and implements a few white-noise-residual tests with readable output that reminds of the null hypotheses. Here, we just run
@@ -151,7 +151,7 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = FALSE)
-summary(res2$model)
+summary(res2)
 ```
 
 and then again test for autocorrelation.
@@ -203,11 +203,11 @@ We had another motivation. `dynardl` + `pssbounds` are a powerful combination fo
 
 ARDL models are useful because they are flexible, but their flexibility undermines our ability to make cumulative sense of the coefficients estimated in any given model. An alternative approach to interpretation is to use the coefficients from an estimated model to simulate meaningful responses in the dependent variable to counterfactual changes in an independent variable $x$ (that we control), allowing the change to filter through the various forms of the $x$ variable in the model, as well as different forms of the $y$ variable (like differences and lagged levels) that might be included. 
 
-dynamac handles this simulated interpretation through a function we have already seen: `dynardl`. All we need to do is specify that `simulate = TRUE`, and we will produce simulated responses. Other arguments are required, but only one has no default: we need to know which $x$ variable to simulate a shock to (the `shockvar`). This "shock" means that, at a time specified by the user, the value of an $x$ variable will move to some level. If the variable is in levels or lagged levels, this means that its new value becomes the pre-shock average plus whatever the shock value is. If the variable is in differences or lagged differences, the shock lasts for one period (as a permanent change in a differenced variable would imply that it is changing every period!).
+dynamac handles this simulated interpretation through a function we have already seen: `dynardl`. All we need to do is specify that `simulate = TRUE`, and we will produce simulated responses: we can observe how a change to a variable in a `dynardl` model produces a corresponding change in the dependent variable. Other arguments are required, but only one has no default: we need to know which $x$ variable to simulate a shock to (the `shockvar`). This "shock" means that, at a time specified by the user, the value of an $x$ variable will move to some level. If the variable is in levels or lagged levels, this means that its new value becomes the pre-shock average plus whatever the shock value is. If the variable is in differences or lagged differences, the shock lasts for one period (as a permanent change in a differenced variable would imply that it is changing every period!).
 
 `dynardl` has reasonable defaults for all of the other required parameters: simulations default to a `range` of 20 periods, lines are drawn at roughly `sig` = 95% confidence, the `shockvar` is shocked by a standard deviation (the `shockval`), we use 1,000 `sims` to simulate the average response, we don't force the other $x$ variables to any values (we allow them to take their means, except for differenced variables, which we set to be zero: assuming that, period-over-period, there is no change), we allow for 20 periods of `burnin`, and we create predicted values of the dependent variable, rather than expected values. All of these options can be controlled by the user, but we'll return to that in a moment.
 
-The simulation process is fairly straightforward. `dynardl` uses the coefficients from the model. It draws a number (specifically, `sims`) of values of the coefficients $\hat\beta$ from the estimated regression model. The distribution is assumed to be multivariate normal with mean of $\hat\beta$ and variance-covariance of the estimated model. Uncertainty is incorporated by simulating $\hat\sigma$ $^{2}$ as a scaled draw from the chi-squared distribution. These fit together by using values of the independent variables (usually their means: see the preceding paragraph) $X$, multiplying by $\hat\beta$ to get predicted values of the dependent variable $y$, and then using $\hat \sigma$ $^{2}$ to introduce uncertainty in the predicted values. If you want to exert more direct control over the values of any $x$ variables used, you can `forceset` them to any other value you like. 
+The simulation process is fairly straightforward. `dynardl` uses the coefficients from the model. It draws a number (specifically, `sims`) of values of the coefficients $\hat\beta$ from the estimated regression model. The distribution is assumed to be multivariate normal with mean of $\hat\beta$ and variance-covariance of the estimated model. Uncertainty is incorporated by simulating $\hat\sigma$ $^{2}$ as a scaled draw from the chi-squared distribution. These fit together by using values of the independent variables (usually their means: see the preceding paragraph) $X$, multiplying by $\hat\beta$ to get predicted values of the dependent variable $y$, and then using $\hat \sigma$ $^{2}$ to introduce uncertainty in the predicted values. If you want to exert more direct control over the values of any $x$ variables used, you can `forceset` them to any other value you like. This is not limited to means or integers; if you have any substantively interesting value you'd like to hold a variable at, you are free to specify whichever value you like. 
 
 But what we're really interested in is the effect of some variable $x$. In the world of `dynardl`, this is our `shockvar`. We specify a variable from the model, tell `dynardl` how much we want it to theoretically change by (in `shockval`, defaulting to a standard deviation of the `shockvar`) and when we want it to change (`time`), and then observe the change in $y$.
 
@@ -219,7 +219,7 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = FALSE)
-summary(res2$model)
+summary(res2)
 ```
 
 Here, we set `simulate = FALSE` because we were just illustrating estimation without simulations (given that simulations take a few seconds to estimate, we may only want to simulate changes when we have a final model, free of autocorrelation and the other things we tested for). Now, we'll turn `simulate = TRUE` and specify an $x$ variable to observe the response of. We'll observe the changes resulting from `incshare10`, given its lagged level demonstrated a significant effect. In other words, our `shockvar = "incshare10"`. By default, `dynardl` will shock it by its standard deviation, but we can observe any change we like with `shockval`.
@@ -230,11 +230,17 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE,
-        shockvar = "incshare10", graph = TRUE)
+        shockvar = "incshare10")
 summary(res2$model)
 ```
 
-It looks somewhat goofy in the vignette, as `dynardl` displays a progress bar to inform you of how many simulations have been completed. But the payoff is the figure: we get to observe the effect of a standard-deviation shock in `incshare10` in the dependent variable. Here, the shock has an immediate effect that does not dissipate for a long time. So long, in fact, that we might want to lengthen the `range` of the simulation. This time, we'll illustrate another feature: the model can be saved to an object, and graphs can be created with two other commands: `area.simulation.graph` and `spike.simulation.graph`.
+It looks somewhat goofy in the vignette, as `dynardl` displays a progress bar to inform you of how many simulations have been completed. But the payoff is in `res2$simulation`. We get to observe the effect of a standard-deviation shock in `incshare10` in the dependent variable. This response is best visualized in a plot.  To see this plot, the model can be saved to an object, and plots can be created with two commands: `area.simulation.plot` and `spike.simulation.plot`.
+
+```{r}
+area.simulation.plot(res2)
+```
+
+Here, the shock has an immediate effect that does not dissipate for a long time. So long, in fact, that we might want to lengthen the `range` of the simulation. 
 
 ```{r}
 res3 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -242,12 +248,12 @@ res3 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30,
-        shockvar = "incshare10", graph = FALSE)
-area.simulation.graph(res3)
-spike.simulation.graph(res3)
+        shockvar = "incshare10")
+area.simulation.plot(res3)
+spike.simulation.plot(res3)
 ```
 
-In `res3` there are actually three sets of output. The first is the model, the second is the information for `pssbounds`, and the last is for graphing. We mention this so that users can use their usual TeX shortcuts for creating tables, customize graphs, or test pssbounds later.
+In `res3` there are actually three sets of output. The first is the model, the second is the information for `pssbounds`, and the last is for plotting. We mention this so that users can use their usual TeX shortcuts for creating tables, customize plots, or test pssbounds later.
 
 ```{r}
 res3$model
@@ -257,7 +263,7 @@ res3$simulation
 
 Only models where `ec = TRUE` will have `$pssbounds` information, as only those models can possibly be testing a cointegrating relationship. We suspect that no one will need them by hand, as you can just pass the whole object via `pssbounds(res3)` to get the same results. 
 
-Other options might be of interest. In order to smooth our confidence intervals (note: NOT make us more confident), we can increase the number of simulations. Additionally, both of the graphing functions allow the user to produce graphs in grayscale (for publications), as well as showing deviations from the mean of $y$ (`changes = TRUE`), rather than some level (that depends on the averages of the $x$ variables). Consider the following (notice the `sims` argument of `dynardl` and the new arguments under `area.simulation.graph`, as well as the new y-axis in the following figure):
+Other options might be of interest. In order to smooth our confidence intervals (note: NOT make us more confident), we can increase the number of simulations. Additionally, both of the plotting functions allow the user to produce plot in grayscale (for publications), as well as showing deviations from the mean of $y$ (`response = "mean.changes"`), rather than some level (that depends on the averages of the $x$ variables). Consider the following (notice the `sims` argument of `dynardl` and the new arguments under `area.simulation.plot`, as well as the new y-axis in the following figure):
 
 ```{r}
 res4 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -265,11 +271,24 @@ res4 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         diffs = c("incshare10", "urate"), 
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30, sims = 10000,
-        shockvar = "incshare10", graph = FALSE)
-area.simulation.graph(res4, changes = TRUE, bw = TRUE)
+        shockvar = "incshare10")
+area.simulation.plot(res4, response = "mean.changes", bw = TRUE)
 ```
 
-The full extent of these options are addressed in the documentation.
+The full extent of these options is addressed in the documentation.
+
+Finally, there is some question as to whether or not quantities of interest from these types of stochastic simulations are best summarized by the means or the medians of the resulting distributions. In most cases, the difference is likely to be minimal. In cases of skew, though, the median might serve significantly better than the mean (described in [-@raineytransform]). Here, we can do that by setting `qoi = median`. 
+
+```{r}
+res5 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
+        lags = list("concern" = 1, "incshare10" = 1),
+        diffs = c("incshare10", "urate"), 
+        lagdiffs = list("concern" = 1),
+        ec = TRUE, simulate = TRUE, range = 30,
+        shockvar = "incshare10", qoi = "median")
+area.simulation.plot(res5)
+```
+
 
 ## Being smart(er than `dynardl`) about data and modeling
 
