@@ -1,14 +1,14 @@
-4369e3d3d3d0282da91f4a44d325f8d9 *DESCRIPTION
-645d123b17a17d1ac756620b40433885 *NAMESPACE
-c91fb597dd4893087c6e48abcc5f352a *R/dynamac.R
+62d8048541355a6dbc012c538deb9f2f *DESCRIPTION
+368e2974fc5df54f7c912132de236cee *NAMESPACE
+f68cc8421ac0ec35d657f5cae7d274ff *R/dynamac.R
 6e91c3d1071728eb7a54daa80a556326 *build/vignette.rds
 3a9bd5ed6e94ee7efaeb8757ed21175e *data/france.data.rda
 2be8665e69f0fa2f20f6ed47a237621f *data/ineq.rda
 cb6ae1959711fe108ac48690b380285d *data/supreme.sup.rda
 31fbcf95222746ffd18bad7b306d5813 *inst/doc/dynamac-vignette.R
 83aa7a1cb0554ea369a34d7119ae8282 *inst/doc/dynamac-vignette.Rmd
-7c5625f871de2a86afc0abb5996876b8 *inst/doc/dynamac-vignette.html
-d2ccdc826cc355d58989356e4775d659 *inst/dynamac-manual.pdf
+875ebdb0a33af3aeb9b2ab730fa96dbd *inst/doc/dynamac-vignette.html
+f1eee25bb917b3f1e9dd21819155b573 *inst/dynamac-manual.pdf
 7d0ebd4f5ca98e68468056953cc44003 *man/area.simulation.plot.Rd
 616c0b546346cf6d4dfae79de9a2aa4b *man/dshift.Rd
 ae1f32435b9532fcf24539fc91207f82 *man/dynardl.Rd
@@ -19,6 +19,7 @@ c7395f3067e5e9b71a5113ecbcd77686 *man/ineq.Rd
 9d3219dec79f9b1fb1702e83ae2e2d28 *man/lshift.Rd
 a1d9193483f85ea238cba79ebf4c7297 *man/pssbounds.Rd
 054d0ca15909147c7afbaf349646d73b *man/spike.simulation.plot.Rd
+b739d88625e5eba12fdc41d49a6ac33c *man/summary.dynardl.Rd
 365ca51539186fb0c58630a85ebfa317 *man/supreme.sup.Rd
 371b245d4f56b5de0290452e541193f1 *tests/testthat.R
 35610d633f602c276839cb59b2bce0a4 *tests/testthat/test-dshift.R
@@ -26,4 +27,4 @@ b429238145ee0012e7ae206b7ee3af00 *tests/testthat/test-dynardl.R
 f182b0c077a9c4b8aa44288bd4a1132e *tests/testthat/test-ldshift.R
 6170aded7a2da00a78b6a653aada592a *tests/testthat/test-lshift.R
 83aa7a1cb0554ea369a34d7119ae8282 *vignettes/dynamac-vignette.Rmd
-dcad111a321e6a78556c4921e2af1bbc *vignettes/timeseriesrj.bib
+821050e7d663639132147fb867dc479b *vignettes/timeseriesrj.bib
