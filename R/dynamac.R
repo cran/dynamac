@@ -1,21 +1,12 @@
-# version 0.1.6
-# 12/12/2018
+# version 0.1.7
+# 2/26/2019
 # Authors: Soren Jordan, Andrew Q. Philips
 
 # Corrections since previous version:
-#   Defined ``ARDL'' in the DESCRIPTION
-#   Fixed the incorrect naming of the lshift help file
-#   Changed res$y to help with autocorrelation estimation
-#   Allow QOI to be mean or median
-#   Added informative messages to dynardl.auto.correlated
-#   Scrubbed references to graph. Now everything refers to plot.
-#   Removed calls to plot in the dynardl() function
-#   Assigned dynardl() objects to class dynardl(), so summary methods can be used to point to correct object
-#   Added informative warnings about vectors for levels/diffs
-#   Permanent citation of Wright (2017)
-#   Renamed changes option in plot functions
-#   Added French dataset for new examples
-#	Exported summary method
+#   Corrected k and f stats on pssbounds (commented line 904)
+#	Corrected help file to reflect this (double check to make sure)
+#	Removed library calls. Just load them in the tester
+#	Line 1053 called to wrong list, fixed.
 
 # TO DO: 
 #   Simulate and test AUC quantities (long-term)
@@ -23,7 +14,6 @@
 #   Add more autocorrelation tests
 #	Impulse responses (period over period changes)
 #	Unit test of critical values by checking output
-#	Change the summary formula shown
 
 # Datasets exported: 
 #' Data on public concern about economic inequality
@@ -91,7 +81,7 @@ NULL
 #'   \item{presapp}{Approval of president}
 #'   \item{congapp}{Approval of Congress}
 #' }
-#' @source \url{https://sites.lsa.umich.edu/admart/replication/}
+#' @source \url{http://dx.doi.org/10.2307/2669280}
 #' @docType data
 #' @keywords datasets
 #' @usage data(supreme.sup)
@@ -909,12 +899,12 @@ dynardl <- function(formula,
 			# If that variable is a first lag, it's in the restriction set. 0 if not
 			ifelse(grepl("l.1.", names(coef(res))[i]) == TRUE, R.temp[i] <- 1, R.temp[i] <- 0)
 			# Except if it's the LDV, we don't want it
-			ifelse(names(coef(res))[i] == paste(ldvnamelist), R.temp[i] <- 0, R.temp[i] <- R.temp[i])
+			# ifelse(names(coef(res))[i] == paste(ldvnamelist), R.temp[i] <- 0, R.temp[i] <- R.temp[i])
 		}
-		k <- sum(R.temp)
-		if(k == 0) {
+		k.temp <- sum(R.temp) - 1 # The LDV is automatically added. So if it's the only variable in first lags, this will be zero
+		if(k.temp == 0) {
 			pssbounds <- "pssbounds not executed: no variables in first lags, so no cointegrating relationship implied."
-		} else{
+		} else {
 			if(trend == TRUE) {
 				if(constant == FALSE) {
 					case <- 0
@@ -933,7 +923,7 @@ dynardl <- function(formula,
 			}
 			tstat <- coef(summary(res))[paste(ldvnamelist),3] # t stat on LDV
 			obs <- length(res$residuals) # number of observations in model
-			k <- sum(R.temp)
+			k <- sum(R.temp) 
 			# This needs to be expanded so that each hypothesis gets its own row
 			R <- matrix(rep(0, length(coef(res))*k), nrow = k)
 			the.row <- 1
@@ -946,7 +936,7 @@ dynardl <- function(formula,
 			# Restriction is always that it's equal to 0
 			q <- 0
 			fstat <- (1/k)*t(R%*%B-q)%*%solve(R%*%V%*%t(R))%*%(R%*%B-q)	
-			pssbounds <- data.frame(obs, k, tstat, fstat, case)
+			pssbounds <- data.frame(obs, k.temp, tstat, fstat, case) # k statistic here EXCLUDES the LDV
 			names(pssbounds) <- c("obs", "k", "tstat", "fstat", "case")
 		}
 	}
@@ -1051,17 +1041,17 @@ dynardl <- function(formula,
 			
 			##### LDVs (MUST HAVE) (these don't depend on shocktime)
 			for(lag in 1:length(lnumdvs)) {		# For each lag in the LDVs 
-				w <- p - lnumdvs[lag	]			# w is the time period minus the appropriate lag of the LDV
+				w <- p - lnumdvs[lag]			# w is the time period minus the appropriate lag of the LDV
 				if(w > 0) {	# If LDV exists, meaning we've gone forward enough in time
 					set[row] <- meanpv[w] 	# For that lag of LDV, give it the corresponding PV
 				}	# Else: keep the set where it is, meaning don't replace the lag
 				row <- row + 1					# Move down the setlist (i.e. to the next lag of LDV)
 			}
 			
-			##### LDDVs (OPTIONAL) (these don't depend on shocktime)
-			if(length(ldnumdvs)) {
-				for(lag in 1:length(ldnumdvs)) {	# For each lag in the LDDVs
-					w <- p - lnumdvs[lag]			# w is the time period minus the appropriate lag of the LDV
+			##### LDDVs (OPTIONAL) (these don't depend on shocktime)			
+			if(length(ldnumdvs)) {			
+				for(lag in 1:length(ldnumdvs)) {	# For each lag in the LDDVs					
+					w <- p - ldnumdvs[lag]			# w is the time period minus the appropriate lag of the LDV
 					if(w > 1) {	# If LDDV exists, meaning we've gone forward enough in time
 						wm1 <- w - 1
 						set[row] <- meanpv[w] - meanpv[wm1]	# For that LDDV, give it the corresponding PV
@@ -1457,10 +1447,10 @@ spike.simulation.plot <- function(x, response = "levels", bw = FALSE) {
 #' Perform Pesaran, Shin and Smith (2001) cointegration test
 #' @param data an optional \code{\link{dynardl}} model. We highly recommend this option. Users are of course welcome to determine their own Case, t-statistic, F-statistic, and observations, but it is easier to have the model determine these quantities.
 #' @param obs number of observations
-#' @param fstat F-statistic of the joint test that variables in levels (except the lagged dependent variable) are equal to zero: \code{l.y = l.x1 + l.x2 +...+l.xk = 0}
+#' @param fstat F-statistic of the joint test that variables in levels are equal to zero: \code{l.y + l.x1 + l.x2 +...+l.xk = 0}
 #' @param tstat t-statistic of the lagged dependent variable
 #' @param case specify certain restrictions on the constant and trend terms, since critical values differ by case. Case I: no intercept or trend, Case II: restricted intercept, no trend, Case III: unrestricted intercept with no trend, Case IV: unrestricted intercept and restricted trend, Case V: unrestricted intercept and trend. Case III is most frequently specified
-#' @param k number of regressors appearing in levels in the estimated model
+#' @param k number of regressors appearing in levels in the estimated model, not including the lagged dependent variable
 #' @param digits the number of digits to round to when showing output. We recommend three.
 #' @param object.out if \code{TRUE}, and \code{dynardl.auto.correlated} is assigned to an object, the AIC, BIC, and results will be stored for the user's convenience.
 #' @details

@@ -12,13 +12,13 @@ pssbounds(data = list(), obs = NULL, fstat = NULL, tstat = NULL,
 
 \item{obs}{number of observations}
 
-\item{fstat}{F-statistic of the joint test that variables in levels (except the lagged dependent variable) are equal to zero: \code{l.y = l.x1 + l.x2 +...+l.xk = 0}}
+\item{fstat}{F-statistic of the joint test that variables in levels are equal to zero: \code{l.y + l.x1 + l.x2 +...+l.xk = 0}}
 
 \item{tstat}{t-statistic of the lagged dependent variable}
 
 \item{case}{specify certain restrictions on the constant and trend terms, since critical values differ by case. Case I: no intercept or trend, Case II: restricted intercept, no trend, Case III: unrestricted intercept with no trend, Case IV: unrestricted intercept and restricted trend, Case V: unrestricted intercept and trend. Case III is most frequently specified}
 
-\item{k}{number of regressors appearing in levels in the estimated model}
+\item{k}{number of regressors appearing in levels in the estimated model, not including the lagged dependent variable}
 
 \item{digits}{the number of digits to round to when showing output. We recommend three.}
 
