@@ -1,19 +1,31 @@
-# version 0.1.7
-# 2/26/2019
+# version 0.1.8.9001
+# 4/9/2019
 # Authors: Soren Jordan, Andrew Q. Philips
 
 # Corrections since previous version:
-#   Corrected k and f stats on pssbounds (commented line 904)
-#	Corrected help file to reflect this (double check to make sure)
-#	Removed library calls. Just load them in the tester
-#	Line 1053 called to wrong list, fixed.
+#	Deprecated separate plot functions
+#	More options to plotting
+#	Bug squishing
 
 # TO DO: 
+#	Do user-specified significances need to be in the plots?
 #   Simulate and test AUC quantities (long-term)
 #   Future release: permanent shifts as opposed to shocks?
 #   Add more autocorrelation tests
 #	Impulse responses (period over period changes)
 #	Unit test of critical values by checking output
+#	Forecasting
+
+
+## Deprecated functions file
+#' @title Deprecated functions in package \pkg{dynamac}
+#' @description The functions listed below are deprecated and will be defunct
+#' in the near future. When possible, functions with similar functionality are mentioned.
+#' Help pages for deprecated functions are available at \code{help-("deprecated")}.
+#' @name dynamac-deprecated
+#' @keywords internal
+NULL
+
 
 # Datasets exported: 
 #' Data on public concern about economic inequality
@@ -41,7 +53,7 @@
 NULL
 
 
-
+# Datasets exported: 
 #' Data on French Energy Consumption and GDP
 #'
 #' Data on GDP are from World Bank World Development Indicators. Data
@@ -61,7 +73,7 @@ NULL
 #' @name france.data
 NULL
 
-
+# Datasets exported: 
 #' Data on US Supreme Court Approval
 #'
 #' A dataset from: Durr, Robert H., Andrew D. Martin, and Christina
@@ -88,7 +100,7 @@ NULL
 #' @name supreme.sup
 NULL
 
- 
+## Functions:
 ## Dependencies: 	MASS (for multivariate normal draws)
 #					lmtest (for autocorrelation tests)
 #
@@ -156,6 +168,17 @@ NULL
 #
 # (9) summary.dynardl()
 #	x = [no default]					a dynardl model object
+#
+# (10) dynardl.simulation.plot()
+#	x = [no default]					a dynardl model object
+#	type = ["area"]						should the plot be an area plot or a spike plot?
+#	response = ["levels"]				track the response of y in "levels", 
+#											"levels.from.mean", period over period "diffs", "cumulative.diffs", 
+#											or "cumulative.abs.diffs" (like a LRE)
+#	bw = [FALSE]						black and white or color?
+# 	y.lab = [""]						user-defined y-label or reasonable default
+# 	x.lab = [""]						user-defined x-label or reasonable default
+
 
 
 ##########################################
@@ -416,7 +439,7 @@ dynardl <- function(formula,
 				first.lag.ldv <- FALSE
 				for(i in 1:length(names(lags))) {
 					if(names(lags)[i] == as.character(formula[[2]])) {
-						for(o in 1:length(names(lags))[i]) {
+						for(o in 1:length(lags[[i]])) {
 							# For the lags of LDV, if it includes the first, we're good
 							ifelse(lags[[i]][o] == 1, first.lag.ldv <- TRUE, first.lag.ldv <- first.lag.ldv)
 						}
@@ -952,16 +975,18 @@ dynardl <- function(formula,
 		btime <- time + burnin
 	
 		# Vectors for predicted values and significance
-		meanpv <- rep(NA, brange)
+		meanpv <- meandpv <- rep(NA, brange)
 		# For significance: if the user sets a value of either 75, 90, or 95, we proceed as normal
 		if(sig %in% c(75, 90, 95)) {
-			PV_pctile <- matrix(rep(NA, brange*6), ncol = 6)
+			d_PV_pctile <- PV_pctile <- matrix(rep(NA, brange*6), ncol = 6)
 			colnames(PV_pctile) <- c("ll95", "ll90", "ll75", "ul75", "ul90", "ul95")
+			colnames(d_PV_pctile) <- c("d.ll95", "d.ll90", "d.ll75", "d.ul75", "d.ul90", "d.ul95")
 		}
 		# If not, we add two columns on the outside to be custom user values
 		else {
-			PV_pctile <- matrix(rep(NA, brange*8), ncol = 8)
+			d_PV_pctile <- PV_pctile <- matrix(rep(NA, brange*8), ncol = 8)
 			colnames(PV_pctile) <- c("ll95", "ll90", "ll75", "ul75", "ul90", "ul95", "ll", "ul")
+			colnames(d_PV_pctile) <- c("d.ll95", "d.ll90", "d.ll75", "d.ul75", "d.ul90", "d.ul95", "d.ll", "d.ul")
 		}
 		
 		##################################
@@ -991,36 +1016,44 @@ dynardl <- function(formula,
 		if(sig %in% c(75, 90, 95)) {
 			# Get the percentiles of the predicted values (all needed for graph)
 			PV_pctile[1,] <- quantile(PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975))
+			d_PV_pctile[1,] <- rep(NA, 6) # the first set of differences will be empty (no period to difference)
 		} 
 		else {
 			PV_pctile[1,] <- quantile(PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975, sigl, sigu))
+			d_PV_pctile[1,] <- rep(NA, 8) # the first set of differences will be empty (no period to difference)
 		}
 		
 		# If ECM, predicted change is added on to sample mean of Y: first/second element of forcesetlist (first is constant)
 		if(ec == "TRUE") {
 			if(constant == FALSE) { # Set this because it changes where LDV is
 				if(qoi == "mean") { # If we're summarizing with the mean
-					meanpv[1] <- mean(PV) + set[1] 
+					meanpv[1] <- mean(PV) + set[1]
+					meandpv[1] <- NA # The first one will be empty: nothing to difference
 				}
 				else {
 					meanpv[1] <- median(PV) + set[1] 
+					meandpv[1] <- NA # The first one will be empty: nothing to difference					
 				}
 			} 
 			else {
 				if(qoi == "mean") { # If we're summarizing with the mean
-					meanpv[1] <- mean(PV) + set[2] 	
+					meanpv[1] <- mean(PV) + set[2] 
+					meandpv[1] <- NA # The first one will be empty: nothing to difference						
 				}
 				else {
 					meanpv[1] <- median(PV) + set[2] 
+					meandpv[1] <- NA # The first one will be empty: nothing to difference					
 				}
 			}
 		} 
 		else { 	# If just LDV model, it's just the new predicted change
 			if(qoi == "mean") { # If we're summarizing with the mean
 				meanpv[1] <- mean(PV)
+				meandpv[1] <- NA # The first one will be empty: nothing to difference				
 			}
 			else {
-				meanpv[1] <- median(PV)		
+				meanpv[1] <- median(PV)
+				meandpv[1] <- NA # The first one will be empty: nothing to difference						
 			}
 		}			
 		###########################
@@ -1034,6 +1067,7 @@ dynardl <- function(formula,
 		
 		for(p in 2:brange) {
 			Sys.sleep(0.1)
+			PV_lag <- PV # keep the last set of PVs for differencing at the end
 			row <- 1			# To work through setlist
 			if(constant == TRUE) {
 				row <- row + 1	# Increment past constant
@@ -1156,44 +1190,57 @@ dynardl <- function(formula,
 				}
 				else {
 					PV_pctile[p,] <- quantile(PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975))
-				}		
+				}	
+				# differenced values don't depend on ECM: it's built in to the PVs
+				d_PV <- PV - PV_lag
+				d_PV_pctile[p,] <- quantile(d_PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975))
 			} 
 			else { # If the user needs their own significance value too
 				if(ec == "TRUE") { # If ECM, add percentiles to old predicted values
 					if(constant == FALSE) { # Set this because it changes where LDV is
 						PV_pctile[p,] <- quantile(PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975, sigl, sigu)) + set[1]
-					} else {
+					} 
+					else {
 						PV_pctile[p,] <- quantile(PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975, sigl, sigu)) + set[2]
 					}
-				} else {
+				} 
+				else {
 					PV_pctile[p,] <- quantile(PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975, sigl, sigu))
 				}
+				d_PV <- PV - PV_lag
+				d_PV_pctile[p,] <- quantile(d_PV, c(0.025, 0.05, 0.125, 0.875, 0.95, 0.975, sigl, sigu))
 			}
 			# Lastly, get the predicted values
 			if(ec == TRUE) {
 				if(constant == FALSE) {
 					if(qoi == "mean") { # If we're summarizing with the mean
 						meanpv[p] <- mean(PV) + set[1]
+						meandpv[p] <- mean(d_PV)
 					}
 					else {
 						meanpv[p] <- median(PV) + set[1]
+						meandpv[p] <- median(d_PV)
 					}
 				} 
 				else {
 					if(qoi == "mean") { # If we're summarizing with the mean
 						meanpv[p] <- mean(PV) + set[2]
+						meandpv[p] <- mean(d_PV)
 					}
 					else {
-						meanpv[p] <- median(PV) + set[2]	
+						meanpv[p] <- median(PV) + set[2]
+						meandpv[p] <- median(d_PV)						
 					}
 				}
 			} 
 			else {
 				if(qoi == "mean") { # If we're summarizing with the mean
 					meanpv[p] <- mean(PV)
+					meandpv[p] <- mean(d_PV)			
 				}
 				else {
-					meanpv[p] <- median(PV)					
+					meanpv[p] <- median(PV)		
+					meandpv[p] <- median(d_PV)								
 				}
 			}				
 			setTxtProgressBar(pb, p)
@@ -1205,16 +1252,22 @@ dynardl <- function(formula,
 		###################################
 		# Discard the burnins
 		if(sig %in% c(75, 90, 95)) {
-			sims <- matrix(rep(NA, range*7), ncol = 7)
+			sims <- matrix(rep(NA, range*14), ncol = 14)
 			sims[,1] <- meanpv[(burnin+1):brange]
 			sims[,2:7] <- PV_pctile[(burnin+1):brange,]
-			colnames(sims) <- c("central", "ll95", "ll90", "ll75", "ul75", "ul90", "ul95")
+			sims[,8] <- meandpv[(burnin+1):brange]
+			sims[,9:14] <- d_PV_pctile[(burnin+1):brange,]
+			colnames(sims) <- c("central", "ll95", "ll90", "ll75", "ul75", "ul90", "ul95", 
+				"d.central",  "d.ll95", "d.ll90", "d.ll75", "d.ul75", "d.ul90", "d.ul95")
 		} 
 		else {
-			sims <- matrix(rep(NA, range*9), ncol = 9)
+			sims <- matrix(rep(NA, range*18), ncol = 18)
 			sims[,1] <- meanpv[(burnin+1):brange]
 			sims[,2:9] <- PV_pctile[(burnin+1):brange,]
-			colnames(sims) <- c("central", "ll95", "ll90", "ll75", "ul75", "ul90", "ul95", paste("ll", sig, sep = ""), paste("ul", sig, sep = ""))
+			sims[,10] <- meandpv[(burnin+1):brange]
+			sims[,11:18] <- d_PV_pctile[(burnin+1):brange,]
+			colnames(sims) <- c("central", "ll95", "ll90", "ll75", "ul75", "ul90", "ul95", paste("ll", sig, sep = ""), paste("ul", sig, sep = ""),
+				"d.central", "d.ll95", "d.ll90", "d.ll75", "d.ul75", "d.ul90", "d.ul95", paste("d.ll", sig, sep = ""), paste("d.ul", sig, sep = ""))
 		}
 		sim.time <- seq(1, length(sims[,1]))
 		temp.names <- colnames(sims)
@@ -1258,26 +1311,23 @@ dynardl <- function(formula,
 #' or in changes from the mean of the dependent variable (\code{mean.changes}). The default is \code{levels}
 #' @param bw should the colors be in black and white (for publication)? The default is \code{FALSE}
 #' @return an area plot
-#' @details
-#' When running \code{dynardl}, \code{simulate} must be true so that there is a simulation to plot.
+#'
+#' @name dynamac-deprecated
+#' @seealso \code{link{dynamac-deprecated}}
+#' @keywords internal
+NULL
+
+#' @rdname dynamac-deprecated
+#' @section \code{area.simulation.plot}:
+#' For \code{area.simulation.plot}, use \code{\link{dynardl.simulation.plot}}.
+#' 
 #' @importFrom graphics lines plot points polygon segments
 #' @author Soren Jordan and Andrew Q. Philips
 #' @keywords utilities
-#' @examples
-#' # Using the ineq data in dynamac
-#' # Shocking Income Top 10
-#' ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
-#'        lags = list("concern" = 1, "incshare10" = 1),
-#'        diffs = c("incshare10", "urate"), 
-#'        lagdiffs = list("concern" = 1),
-#'        ec = TRUE, simulate = TRUE, range = 30,
-#'        shockvar = "incshare10")
-#' area.simulation.plot(ardl.model)	# Shows absolute levels
-#' area.simulation.plot(ardl.model, response = "mean.changes")  # Shows changes from mean level
-#' area.simulation.plot(ardl.model, bw = TRUE)	 # Grayscale plots
 #' @export
 
 area.simulation.plot <- function(x, response = "levels", bw = FALSE) {
+	.Deprecated("dynardl.simulation.plot")
 	if(x$model$simulate == FALSE) {
 		stop("dynardl() object does not include simulation to plot.")
 	}
@@ -1348,26 +1398,23 @@ area.simulation.plot <- function(x, response = "levels", bw = FALSE) {
 #' or in changes from the mean of the dependent variable (\code{mean.changes}). The default is \code{levels}
 #' @param bw should the colors be in black and white (for publication)? The default is \code{FALSE}
 #' @return a spike plot
-#' @details
-#' When running \code{dynardl}, \code{simulate} must be true so that there is a simulation to plot.
+#'
+#' @name dynamac-deprecated
+#' @seealso \code{link{dynamac-deprecated}}
+#' @keywords internal
+NULL
+
+#' @rdname dynamac-deprecated
+#' @section \code{spike.simulation.plot}:
+#' For \code{spike.simulation.plot}, use \code{\link{dynardl.simulation.plot}}.
+#'
 #' @importFrom graphics lines plot points polygon segments
 #' @author Soren Jordan and Andrew Q. Philips
 #' @keywords utilities
-#' @examples
-#' # Using the ineq data in dynamac
-#' # Shocking Income Top 10
-#' ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
-#'        lags = list("concern" = 1, "incshare10" = 1),
-#'        diffs = c("incshare10", "urate"), 
-#'        lagdiffs = list("concern" = 1),
-#'        ec = TRUE, simulate = TRUE, range = 30,
-#'        shockvar = "incshare10")
-#' spike.simulation.plot(ardl.model)	 # Shows absolute levels
-#' spike.simulation.plot(ardl.model, response = "mean.changes")  # Shows changes from mean level
-#' spike.simulation.plot(ardl.model, bw = TRUE)	 # Grayscale plots
 #' @export
 
 spike.simulation.plot <- function(x, response = "levels", bw = FALSE) {
+	.Deprecated("dynardl.simulation.plot")
 	if(x$model$simulate == FALSE) {
 		stop("dynardl() object does not include simulation to plot.")
 	}
@@ -3299,8 +3346,201 @@ summary.dynardl <- function(object, ...) {
 	summary(object$model)
 }
 
+#############################################
+# ------(10) dynardl.simulation.plot -------#
+#############################################
+#' Create a plot of a simulated response in a dynardl model
+#' @param x a dynardl model with a simulation to be plotted
+#' @param type whether the plot should be an area plot (\code{area}) or a spike plot (\code{spike})
+#' @param response whether the plot of the response should be shown in levels of the dependent variable (\code{levels}), 
+#' changes from the mean of the dependent variable (\code{levels.from.mean}), period-over-period changes in the
+#' dependent variable (\code{diffs}), the sum of the period-over-period changes (\code{cumulative.diffs}), or the absolute
+#' value of the cumulative differences (\code{cumulative.abs.diffs}). The default is \code{levels}
+#' @param bw should the colors be in black and white (for publication)? The default is \code{FALSE}
+#' @param y.lab a user-defined y-label to be used instead of the default
+#' @param x.lab a user-defined x-label to be used instead of the default
+#' @return a plot of the simulated dynardl model
+#' @details
+#' When running \code{dynardl}, \code{simulate} must be true so that there is a simulation to plot.
+#' @importFrom graphics lines plot points polygon segments
+#' @author Soren Jordan and Andrew Q. Philips
+#' @keywords utilities
+#' @examples
+#' # Using the ineq data in dynamac
+#' # Shocking Income Top 10
+#' ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
+#'        lags = list("concern" = 1, "incshare10" = 1),
+#'        diffs = c("incshare10", "urate"), 
+#'        lagdiffs = list("concern" = 1),
+#'        ec = TRUE, simulate = TRUE, range = 30,
+#'        shockvar = "incshare10")
+#' 
+#' # Shows absolute levels
+#' dynardl.simulation.plot(ardl.model)	
+#' # Shows changes from mean level
+#' dynardl.simulation.plot(ardl.model, response = "levels.from.mean")  
+#' # Same plot, but with spikeplot
+#' dynardl.simulation.plot(ardl.model, type = "spike", response = "levels.from.mean")  
+#' # Grayscale plots
+#' dynardl.simulation.plot(ardl.model, bw = TRUE)	 
+#' @export
+
+dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = FALSE, y.lab = "", x.lab = "") {
+	if(x$model$simulate == FALSE) {
+		stop("dynardl() object does not include simulation to plot.")
+	}
+	if(!(response %in% c("levels", "levels.from.mean", "diffs", "cumulative.diffs", "cumulative.abs.diffs"))) {
+		stop("Response must be one of 'levels', 'levels.from.mean', 'diffs', 'cumulative.diffs', or 'cumulative.abs.diffs'.")
+	}
+	if(!(type %in% c("area", "spike"))) {
+		stop("Plot type must be either an area plot ('area') or a spike plot ('spike').")
+	}
+	z <- x$simulation
+	if(response == "levels") { # If we're just plotting levels of Y
+		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)), 
+			ylab = ifelse(y.lab == "", "Y Value", y.lab), xlab = ifelse(x.lab == "", "Time", x.lab))
+		if(type == "area") { 
+			polygon(c(z$time, rev(z$time)), c(z$ul95, rev(z$ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
+			polygon(c(z$time, rev(z$time)), c(z$ul90, rev(z$ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
+			polygon(c(z$time, rev(z$time)), c(z$ul75, rev(z$ll75)), col = "grey30", border = NA) # 75
+			# Actual response
+			lines(z$time, z$central, lty = 2, lwd = 3)
+		} else { # if it's a spikeplot
+			for(i in 1:length(z$time)) { # 95 percent sig
+				segments(z$time[i], z$ll95[i], z$time[i], z$ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
+			}
+			for(i in 1:length(z$time)) { # 90 percent sig
+				segments(z$time[i], z$ll90[i], z$time[i], z$ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
+			}
+			for(i in 1:length(z$time)) { # 75 percent sig
+				segments(z$time[i], z$ll75[i], z$time[i], z$ul75[i], lwd = 5, col = "grey30")
+			}
+			# Actual response
+			points(z$time, z$central, lwd = 4)	
+		}		
+	}	
+	else if(response == "levels.from.mean") { # If it's changes from the mean, changes values, same code
+		z$ll95 <- z$ll95 - x$model$ymean
+		z$ul95 <- z$ul95 - x$model$ymean
+		z$ll90 <- z$ll90 - x$model$ymean
+		z$ul90 <- z$ul90 - x$model$ymean
+		z$ll75 <- z$ll75 - x$model$ymean
+		z$ul75 <- z$ul75 - x$model$ymean
+		z$central <- z$central - x$model$ymean
+		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)),
+			ylab = ifelse(y.lab == "", "Changes from Y Mean Value", y.lab), xlab = ifelse(x.lab == "", "Time", x.lab))
+		if(type == "area") {
+			polygon(c(z$time, rev(z$time)), c(z$ul95, rev(z$ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
+			polygon(c(z$time, rev(z$time)), c(z$ul90, rev(z$ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
+			polygon(c(z$time, rev(z$time)), c(z$ul75, rev(z$ll75)), col = "grey30", border = NA) # 75
+			# Actual response
+			lines(z$time, z$central, lty = 2, lwd = 3)
+		} else { # if it's a spikeplot
+			for(i in 1:length(z$time)) { # 95 percent sig
+				segments(z$time[i], z$ll95[i], z$time[i], z$ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
+			}
+			for(i in 1:length(z$time)) { # 90 percent sig
+				segments(z$time[i], z$ll90[i], z$time[i], z$ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
+			}
+			for(i in 1:length(z$time)) { # 75 percent sig
+				segments(z$time[i], z$ll75[i], z$time[i], z$ul75[i], lwd = 5, col = "grey30")
+			}
+			# Actual response
+			points(z$time, z$central, lwd = 4)
+		}
+	}
+	else if(response == "diffs") { # If it's differences in Y
+		plot(z$time, z$d.ll95, type = "n", ylim = c(min(z$d.ll95), max(z$d.ul95)), 
+			ylab = ifelse(y.lab == "", "Change in Y Value", y.lab), xlab = ifelse(x.lab == "", "Time", x.lab))
+		if(type == "area") { 
+			polygon(c(z$time, rev(z$time)), c(z$d.ul95, rev(z$d.ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
+			polygon(c(z$time, rev(z$time)), c(z$d.ul90, rev(z$d.ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
+			polygon(c(z$time, rev(z$time)), c(z$d.ul75, rev(z$d.ll75)), col = "grey30", border = NA) # 75
+			# Actual response
+			lines(z$time, z$d.central, lty = 2, lwd = 3)
+		} else { # if it's a spikeplot
+			for(i in 1:length(z$time)) { # 95 percent sig
+				segments(z$time[i], z$d.ll95[i], z$time[i], z$d.ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
+			}
+			for(i in 1:length(z$time)) { # 90 percent sig
+				segments(z$time[i], z$d.ll90[i], z$time[i], z$d.ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
+			}
+			for(i in 1:length(z$time)) { # 75 percent sig
+				segments(z$time[i], z$d.ll75[i], z$time[i], z$d.ul75[i], lwd = 5, col = "grey30")
+			}
+			# Actual response
+			points(z$time, z$d.central, lwd = 4)	
+		}		
+	}
+	else if(response == "cumulative.diffs") { # If it's cumulative differences in Y
+		warning("Measure of uncertainty does not account for simulations; revisions coming in future iterations of dynamac. Plot purely illustrative.")
+		z$d.ll95 <- cumsum(z$d.ll95)
+		z$d.ul95 <- cumsum(z$d.ul95)
+		z$d.ll90 <- cumsum(z$d.ll90)
+		z$d.ul90 <- cumsum(z$d.ul90)
+		z$d.ll75 <- cumsum(z$d.ll75)
+		z$d.ul75 <- cumsum(z$d.ul75)
+		z$d.central <- cumsum(z$d.central)
+		plot(z$time, z$d.ll95, type = "n", ylim = c(min(z$d.ll95), max(z$d.ul95)), 
+			ylab = ifelse(y.lab == "", "Cumulative Change in Y Value", y.lab), xlab = ifelse(x.lab == "", "Time", x.lab))
+		if(type == "area") { 
+			polygon(c(z$time, rev(z$time)), c(z$d.ul95, rev(z$d.ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
+			polygon(c(z$time, rev(z$time)), c(z$d.ul90, rev(z$d.ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
+			polygon(c(z$time, rev(z$time)), c(z$d.ul75, rev(z$d.ll75)), col = "grey30", border = NA) # 75
+			# Actual response
+			lines(z$time, z$d.central, lty = 2, lwd = 3)
+		} else { # if it's a spikeplot
+			for(i in 1:length(z$time)) { # 95 percent sig
+				segments(z$time[i], z$d.ll95[i], z$time[i], z$d.ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
+			}
+			for(i in 1:length(z$time)) { # 90 percent sig
+				segments(z$time[i], z$d.ll90[i], z$time[i], z$d.ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
+			}
+			for(i in 1:length(z$time)) { # 75 percent sig
+				segments(z$time[i], z$d.ll75[i], z$time[i], z$d.ul75[i], lwd = 5, col = "grey30")
+			}
+			# Actual response
+			points(z$time, z$d.central, lwd = 4)	
+		}		
+	}
+	else if(response == "cumulative.abs.diffs") { # If it's cumulative differences in Y
+		warning("Measure of uncertainty coming in future iterations of dynamac. Plot purely illustrative.")
+		z$d.ll95 <- cumsum(abs(z$d.ll95))
+		z$d.ul95 <- cumsum(abs(z$d.ul95))
+		z$d.ll90 <- cumsum(abs(z$d.ll90))
+		z$d.ul90 <- cumsum(abs(z$d.ul90))
+		z$d.ll75 <- cumsum(abs(z$d.ll75))
+		z$d.ul75 <- cumsum(abs(z$d.ul75))
+		z$d.central <- cumsum(abs(z$d.central))
+		plot(z$time, z$d.ll95, type = "n", ylim = c(min(z$d.central), max(z$d.central)), # Fix this
+			ylab = ifelse(y.lab == "", "Cumulative Absolute Change in Y Value", y.lab), xlab = ifelse(x.lab == "", "Time", x.lab))
+		if(type == "area") { 
+#			polygon(c(z$time, rev(z$time)), c(z$d.ul95, rev(z$d.ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
+#			polygon(c(z$time, rev(z$time)), c(z$d.ul90, rev(z$d.ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
+#			polygon(c(z$time, rev(z$time)), c(z$d.ul75, rev(z$d.ll75)), col = "grey30", border = NA) # 75
+#			# Actual response
+			points(z$time, z$d.central, lwd = 4)	
+			lines(z$time, z$d.central, lwd = 4)	
+		} else { # if it's a spikeplot
+#			for(i in 1:length(z$time)) { # 95 percent sig
+#				segments(z$time[i], z$d.ll95[i], z$time[i], z$d.ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
+#			}
+#			for(i in 1:length(z$time)) { # 90 percent sig
+#				segments(z$time[i], z$d.ll90[i], z$time[i], z$d.ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
+#			}
+#			for(i in 1:length(z$time)) { # 75 percent sig
+#				segments(z$time[i], z$d.ll75[i], z$time[i], z$d.ul75[i], lwd = 5, col = "grey30")
+#			}
+#			# Actual response
+			points(z$time, z$d.central, lwd = 4)	
+			lines(z$time, z$d.central, lwd = 4)	
+		}		
+	}	
+}	
+	
+	
 ###################################
-# -----(10) dynardl.effects ------#
+# -----(11) dynardl.effects ------#
 ###################################
 
 dynardl.effects <- function(x, tol = 0.025, period = NULL, x.lag = NULL, object.out = FALSE) {

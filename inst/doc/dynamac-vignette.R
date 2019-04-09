@@ -106,7 +106,7 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
 summary(res2$model)
 
 ## ------------------------------------------------------------------------
-area.simulation.plot(res2)
+dynardl.simulation.plot(res2, type = "area", response = "levels")
 
 ## ------------------------------------------------------------------------
 res3 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -115,8 +115,8 @@ res3 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30,
         shockvar = "incshare10")
-area.simulation.plot(res3)
-spike.simulation.plot(res3)
+dynardl.simulation.plot(res3, type = "area", response = "levels")
+dynardl.simulation.plot(res3, type = "spike", response = "levels")
 
 ## ------------------------------------------------------------------------
 res3$model
@@ -130,7 +130,7 @@ res4 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30, sims = 10000,
         shockvar = "incshare10")
-area.simulation.plot(res4, response = "mean.changes", bw = TRUE)
+dynardl.simulation.plot(res4, type = "area", response = "levels.from.mean", bw = TRUE)
 
 ## ------------------------------------------------------------------------
 res5 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -139,5 +139,5 @@ res5 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30,
         shockvar = "incshare10", qoi = "median")
-area.simulation.plot(res5)
+dynardl.simulation.plot(res5, type = "area", response = "levels")
 

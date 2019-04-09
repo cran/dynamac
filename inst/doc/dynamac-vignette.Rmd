@@ -234,10 +234,10 @@ res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
 summary(res2$model)
 ```
 
-It looks somewhat goofy in the vignette, as `dynardl` displays a progress bar to inform you of how many simulations have been completed. But the payoff is in `res2$simulation`. We get to observe the effect of a standard-deviation shock in `incshare10` in the dependent variable. This response is best visualized in a plot.  To see this plot, the model can be saved to an object, and plots can be created with two commands: `area.simulation.plot` and `spike.simulation.plot`.
+It looks somewhat goofy in the vignette, as `dynardl` displays a progress bar to inform you of how many simulations have been completed. But the payoff is in `res2$simulation`. We get to observe the effect of a standard-deviation shock in `incshare10` in the dependent variable. This response is best visualized in a plot.  To see this plot, the model can be saved to an object, and plots can be created with `dynardl.simulation.plot`.
 
 ```{r}
-area.simulation.plot(res2)
+dynardl.simulation.plot(res2, type = "area", response = "levels")
 ```
 
 Here, the shock has an immediate effect that does not dissipate for a long time. So long, in fact, that we might want to lengthen the `range` of the simulation. 
@@ -249,8 +249,8 @@ res3 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30,
         shockvar = "incshare10")
-area.simulation.plot(res3)
-spike.simulation.plot(res3)
+dynardl.simulation.plot(res3, type = "area", response = "levels")
+dynardl.simulation.plot(res3, type = "spike", response = "levels")
 ```
 
 In `res3` there are actually three sets of output. The first is the model, the second is the information for `pssbounds`, and the last is for plotting. We mention this so that users can use their usual TeX shortcuts for creating tables, customize plots, or test pssbounds later.
@@ -263,7 +263,7 @@ res3$simulation
 
 Only models where `ec = TRUE` will have `$pssbounds` information, as only those models can possibly be testing a cointegrating relationship. We suspect that no one will need them by hand, as you can just pass the whole object via `pssbounds(res3)` to get the same results. 
 
-Other options might be of interest. In order to smooth our confidence intervals (note: NOT make us more confident), we can increase the number of simulations. Additionally, both of the plotting functions allow the user to produce plot in grayscale (for publications), as well as showing deviations from the mean of $y$ (`response = "mean.changes"`), rather than some level (that depends on the averages of the $x$ variables). Consider the following (notice the `sims` argument of `dynardl` and the new arguments under `area.simulation.plot`, as well as the new y-axis in the following figure):
+Other options might be of interest. In order to smooth our confidence intervals (note: NOT make us more confident), we can increase the number of simulations. Additionally, the plotting function allows the user to produce plot in grayscale (for publications), as well as showing deviations from the mean of $y$ (`response = "mean.changes"`), rather than some level (that depends on the averages of the $x$ variables). Consider the following (notice the `sims` argument of `dynardl` and the new arguments under `dynardl.simulation.plot`, as well as the new y-axis in the following figure):
 
 ```{r}
 res4 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
@@ -272,7 +272,7 @@ res4 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30, sims = 10000,
         shockvar = "incshare10")
-area.simulation.plot(res4, response = "mean.changes", bw = TRUE)
+dynardl.simulation.plot(res4, type = "area", response = "levels.from.mean", bw = TRUE)
 ```
 
 The full extent of these options is addressed in the documentation.
@@ -286,7 +286,7 @@ res5 <- dynardl(concern ~ incshare10 + urate, data = ineq,
         lagdiffs = list("concern" = 1),
         ec = TRUE, simulate = TRUE, range = 30,
         shockvar = "incshare10", qoi = "median")
-area.simulation.plot(res5)
+dynardl.simulation.plot(res5, type = "area", response = "levels")
 ```
 
 
