@@ -1,21 +1,16 @@
-# version 0.1.9
-# 9/27/2019
+# version 0.1.10
+# 11/6/2019
 # Authors: Soren Jordan, Andrew Q. Philips
 
 # Corrections since previous version:
-#	Deprecated separate plot functions
-#	More options to plotting
-#	New grand plotting function (combining all)
-#	Bug squishing
-#	Ability to start the simulation plots at a period other than 1
-#	pssbounds is informative if k = 0
+#	Fixed error in absolute.cumulative.differences
 
 # TO DO: 
 #	Do user-specified significances need to be in the plots?
 #   Future release: permanent shifts as opposed to shocks? Forecasting?
 #   Add more autocorrelation tests
 #	Unit test of critical values by checking output
-
+#	Automatic lag selection?
 
 ## Deprecated functions file
 #' @title Deprecated functions in package \pkg{dynamac}
@@ -3457,7 +3452,8 @@ summary.dynardl <- function(object, ...) {
 #' levels from the mean of the dependent variable (\code{levels.from.mean}), period-over-period changes in the
 #' dependent variable (\code{diffs}), the absolute value of the (decreasing) change in the dependent variable 
 #' in each time period due to the shock (\code{shock.effect.decay}), the sum of the period-over-period changes (\code{cumulative.diffs}), 
-#' or the absolute value of the cumulative differences (\code{cumulative.abs.diffs}). The default is \code{levels}
+#' or the absolute value of the cumulative differences (where negative effects are treated as positive) (\code{cumulative.abs.diffs}). 
+#' The default is \code{levels}
 #' @param bw should the colors be in black and white (for publication)? The default is \code{FALSE}
 #' @param ylab a user-defined y-label to be used instead of the default
 #' @param xlab a user-defined x-label to be used instead of the default
@@ -3472,6 +3468,10 @@ summary.dynardl <- function(object, ...) {
 #' @param last.period when deciding when to stop calculating the absolute value of the shocks to the dependent variable,
 #' you can specify a specific period in which to stop calculating absolute cumulative differences. Specify a \code{tol} or a \code{last.period}.
 #' If both are specified, \code{last.period} overrides \code{tol}
+#' @param abs.errors when calculating confidence for the absolute cumulative effect, should differences accumulate in each time
+#' time period (\code{cumulate}, which could be explosive if the error in the model is large), should differences be observed at each time 
+#' (\code{within.period}, which will have smaller values in equilibrium than when changing), or should only the values be plotted (\code{none}).
+#' The default is \code{none}
 #' @param ... other arguments to be passed to the call to plot
 #' @return a plot of the simulated dynardl model
 #' @details
@@ -3502,7 +3502,7 @@ summary.dynardl <- function(object, ...) {
 #' dynardl.simulation.plot(ardl.model, bw = TRUE)	 
 #' @export
 
-dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = FALSE, last.period = NULL, tol = (abs(x$model$ymean) * 0.01), start.period = 1, ylab = "", xlab = "", ...) {
+dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = FALSE, last.period = NULL, tol = (abs(x$model$ymean) * 0.01), start.period = 1, abs.errors = "none", ylab = "", xlab = "", ...) {
 	if(x$model$simulate == FALSE) {
 		stop("dynardl object does not include simulation to plot.")
 	}
@@ -3554,11 +3554,11 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 	} 
 	else if(response == "levels.from.mean") { # If it's changes from the mean, changes values, same code
 		z$ll95 <- z$ll95 - x$model$ymean
-		z$ul95 <- z$ul95 - x$model$ymean
 		z$ll90 <- z$ll90 - x$model$ymean
-		z$ul90 <- z$ul90 - x$model$ymean
 		z$ll75 <- z$ll75 - x$model$ymean
 		z$ul75 <- z$ul75 - x$model$ymean
+		z$ul90 <- z$ul90 - x$model$ymean
+		z$ul95 <- z$ul95 - x$model$ymean
 		z$central <- z$central - x$model$ymean
 		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)),
 			ylab = ifelse(ylab == "", "Changes from Y Mean Value", ylab), xlab = ifelse(xlab == "", "Time", xlab), ...)
@@ -3695,60 +3695,107 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 			stop("dynardl object must have fullsims = TRUE to track cumulative absolute differences.")
 		}
 		a <- x$rawsims[,start.period:ncol(x$rawsims)]
-		# Two matrices: one for the diffs of the raw simulations (by simulation), the other for cumulative
 		# Here, diffs sims is going to be 2:length of simulation, with the first period NA. This is to sync it with the d.central output
-		diff.sims <- cum.diff.sims <- temp.abs.diff.sims <- cum.abs.diff.sims <- matrix(rep(NA, nrow(a)*(ncol(a) - 1)), nrow = nrow(a)) # Last column is central tendency
-		# Track the differences for each simulation		
+		diff.sims <- matrix(rep(NA, nrow(a)*(ncol(a) - 1)), nrow = nrow(a)) # Last column is central tendency
+		# Track the differences for each simulation
 		for(i in 2:ncol(diff.sims)) {
 			diff.sims[,i] <- a[,i] - a[,(i - 1)]
 		}
 		is.changing.test <- is.changing
 		if(identical(is.changing, NULL)) {
 			is.changing.test <- 1
-		}
-		# Up until the shocktime, we're going to take regular diffs, NOT absolute, since, they're noise
-		# temp.abs.diff.sims[,2] <- cum.abs.diff.sims[,2] <- diff.sims[,2]
-		for(i in 2:ncol(temp.abs.diff.sims)) {
+		}		
+		temp.ll95 <- temp.ll90 <- temp.ll75 <- temp.ul75 <- temp.ul90 <- temp.ul95 <- temp.central <- rep(NA, ncol(diff.sims))
+		d.ll95 <- d.ul95 <- d.ll90 <- d.ul90 <- d.ll75 <- d.ul75 <- d.central <- rep(NA, ncol(diff.sims))		
+		for(i in 2:ncol(diff.sims)) {
 			if((i + start.period - 1) < x$simulation$shocktime[1]) { # If it's in the equilibriating period before the shock
-				temp.abs.diff.sims[,i] <- diff.sims[,i] # Preserve the regular diffs, NOT absolute, since, they're noise
+				temp.ll95[i] <- quantile(diff.sims[,i], 0.025, na.rm = T) # Preserve the regular diffs, NOT absolute, since, they're noise
+				temp.ll90[i] <- quantile(diff.sims[,i], 0.050, na.rm = T)
+				temp.ll75[i] <- quantile(diff.sims[,i], 0.125, na.rm = T)
+				temp.ul75[i] <- quantile(diff.sims[,i], 0.875, na.rm = T)
+				temp.ul90[i] <- quantile(diff.sims[,i], 0.950, na.rm = T)
+				temp.ul95[i] <- quantile(diff.sims[,i], 0.975, na.rm = T)
+				temp.central[i] <- ifelse(identical(x$rawsims$central[1], "median"), median(diff.sims[,i], na.rm = T), mean(diff.sims[,i], na.rm = T))
+				d.central[i] <- sum(temp.central[1:i], na.rm = T)
 			} else {
-				if((is.changing.test - start.period + 1) >= i) { # If it is still moving on the differences from the beginning,
-					temp.abs.diff.sims[,i] <- abs(diff.sims[,i]) # Preserve the ABSOLUTE changes for that time period
-				} else { # If the changes aren't `real', meaning below our tolerance
-					temp.abs.diff.sims[,i] <- 0 # Replace the `change' (noise) with nothing
+				if((is.changing.test - start.period + 1) >= i) { # if it is moving
+					if(mean(diff.sims[,i]) > 0) { # if the movement is positive
+						temp.central[i] <- ifelse(identical(x$rawsims$central[1], "median"), median(diff.sims[,i], na.rm = T), mean(diff.sims[,i], na.rm = T))
+						d.central[i] <- sum(temp.central[1:i], na.rm = T)
+						if(abs.errors == "cumulate") {
+							temp.ll95[i] <- temp.ll95[i-1] + (quantile(diff.sims[,i], 0.025, na.rm = T))
+							temp.ll90[i] <- temp.ll90[i-1] + (quantile(diff.sims[,i], 0.050, na.rm = T))
+							temp.ll75[i] <- temp.ll75[i-1] + (quantile(diff.sims[,i], 0.125, na.rm = T))
+							temp.ul75[i] <- temp.ul75[i-1] + (quantile(diff.sims[,i], 0.875, na.rm = T))
+							temp.ul90[i] <- temp.ul90[i-1] + (quantile(diff.sims[,i], 0.950, na.rm = T))
+							temp.ul95[i] <- temp.ul95[i-1] + (quantile(diff.sims[,i], 0.975, na.rm = T))
+						} else { # if it's none or within, do the same for the plot scale
+							temp.ll95[i] <- d.central[i] - abs(temp.central[i] - quantile(diff.sims[,i], 0.025, na.rm = T))
+							temp.ll90[i] <- d.central[i] - abs(temp.central[i] - quantile(diff.sims[,i], 0.050, na.rm = T))
+							temp.ll75[i] <- d.central[i] - abs(temp.central[i] - quantile(diff.sims[,i], 0.125, na.rm = T))
+							temp.ul75[i] <- d.central[i] + (quantile(diff.sims[,i], 0.875, na.rm = T) - temp.central[i])
+							temp.ul90[i] <- d.central[i] + (quantile(diff.sims[,i], 0.950, na.rm = T) - temp.central[i])
+							temp.ul95[i] <- d.central[i] + (quantile(diff.sims[,i], 0.975, na.rm = T) - temp.central[i])
+						}
+					} else { # if the movement is negative
+						temp.central[i] <- ifelse(identical(x$rawsims$central[1], "median"), median(diff.sims[,i], na.rm = T)*(-1), mean(diff.sims[,i], na.rm = T)*(-1))
+						d.central[i] <- sum(temp.central[1:i], na.rm = T)
+						if(abs.errors == "cumulate") {
+							temp.ul95[i] <- temp.ul95[i-1] + (quantile(diff.sims[,i], 0.025, na.rm = T)*(-1))
+							temp.ul90[i] <- temp.ul90[i-1] + (quantile(diff.sims[,i], 0.050, na.rm = T)*(-1))
+							temp.ul75[i] <- temp.ul75[i-1] + (quantile(diff.sims[,i], 0.125, na.rm = T)*(-1))
+							temp.ll75[i] <- temp.ll75[i-1] + (quantile(diff.sims[,i], 0.875, na.rm = T)*(-1))
+							temp.ll90[i] <- temp.ll90[i-1] + (quantile(diff.sims[,i], 0.950, na.rm = T)*(-1))
+							temp.ll95[i] <- temp.ll95[i-1] + (quantile(diff.sims[,i], 0.975, na.rm = T)*(-1))
+						} else { # if it's none or within, do the same for the plot scale						
+							temp.ul95[i] <- d.central[i] + (quantile(diff.sims[,i], 0.025, na.rm = T)*(-1) - temp.central[i])
+							temp.ul90[i] <- d.central[i] + (quantile(diff.sims[,i], 0.050, na.rm = T)*(-1) - temp.central[i])
+							temp.ul75[i] <- d.central[i] + (quantile(diff.sims[,i], 0.125, na.rm = T)*(-1) - temp.central[i])
+							temp.ll75[i] <- d.central[i] - abs(temp.central[i] - quantile(diff.sims[,i], 0.875, na.rm = T)*(-1))
+							temp.ll90[i] <- d.central[i] - abs(temp.central[i] - quantile(diff.sims[,i], 0.950, na.rm = T)*(-1))
+							temp.ll95[i] <- d.central[i] - abs(temp.central[i] - quantile(diff.sims[,i], 0.975, na.rm = T)*(-1))
+						}
+					}
+				} else { # if it's not moving, by tol or last.period
+						temp.ll95[i] <- temp.ll95[i-1]
+						temp.ll90[i] <- temp.ll90[i-1]
+						temp.ll75[i] <- temp.ll75[i-1]
+						temp.ul75[i] <- temp.ul75[i-1]
+						temp.ul90[i] <- temp.ul90[i-1]
+						temp.ul95[i] <- temp.ul95[i-1]
+						temp.central[i] <- 0
+						d.central[i] <- sum(temp.central[1:i], na.rm = T)
+					}
 				}
-			}
-			# Now: the sims we're going to keep and graph: sum over all of them to now
-			cum.abs.diff.sims[,i] <- rowSums(temp.abs.diff.sims[,1:i], na.rm = T)
+			d.ll95[i] <- temp.ll95[i] 
+			d.ll90[i] <- temp.ll90[i] 
+			d.ll75[i] <- temp.ll75[i] 
+			d.ul75[i] <- temp.ul75[i] 
+			d.ul90[i] <- temp.ul90[i] 
+			d.ul95[i] <- temp.ul95[i] 
 		}
-		d.ll95 <- d.ul95 <- d.ll90 <- d.ul90 <- d.ll75 <- d.ul75 <- d.central <- rep(NA, ncol(cum.abs.diff.sims))
-		for(i in 1:ncol(cum.abs.diff.sims)) {
-			d.ll95[i] <- quantile(cum.abs.diff.sims[,i], 0.025, na.rm = T)
-			d.ll90[i] <- quantile(cum.abs.diff.sims[,i], 0.050, na.rm = T)
-			d.ll75[i] <- quantile(cum.abs.diff.sims[,i], 0.125, na.rm = T)
-			d.ul75[i] <- quantile(cum.abs.diff.sims[,i], 0.875, na.rm = T)
-			d.ul90[i] <- quantile(cum.abs.diff.sims[,i], 0.950, na.rm = T)
-			d.ul95[i] <- quantile(cum.abs.diff.sims[,i], 0.975, na.rm = T)
-			d.central[i] <- ifelse(identical(x$rawsims$central[1], "median"), median(cum.abs.diff.sims[,i], na.rm = T), mean(cum.abs.diff.sims[,i], na.rm = T))
-		}
-		time <- seq(start.period, (ncol(cum.abs.diff.sims) + start.period - 1), 1)
+		time <- seq(start.period, (ncol(diff.sims) + start.period - 1), 1)
 		plot(time, d.ll95, type = "n", ylim = c(min(d.ll95, na.rm = T), max(d.ul95, na.rm = T)), 
-			ylab = ifelse(ylab == "", "Cumulative Absolute Change in Y Value", ylab), xlab = ifelse(xlab == "", "Time", xlab), ...)
-		if(type == "area") { 
-			polygon(c(time, rev(time)), c(d.ul95, rev(d.ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
-			polygon(c(time, rev(time)), c(d.ul90, rev(d.ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
-			polygon(c(time, rev(time)), c(d.ul75, rev(d.ll75)), col = "grey30", border = NA) # 75
+			ylab = ifelse(ylab == "", "Cumulative Absolute Change in Y Value", ylab), xlab = ifelse(xlab == "", "Time", xlab))
+		if(type == "area") {
+			if(abs.errors != "none") {
+				polygon(c(time, rev(time)), c(d.ul95, rev(d.ll95)), col = ifelse(bw == FALSE, "skyblue1", "grey70"), border = NA) # 95
+				polygon(c(time, rev(time)), c(d.ul90, rev(d.ll90)), col = ifelse(bw == FALSE, "skyblue3", "grey50"), border = NA) # 90
+				polygon(c(time, rev(time)), c(d.ul75, rev(d.ll75)), col = "grey30", border = NA) # 75
+			}
 			# Actual response
 			lines(time, d.central, lty = 2, lwd = 3)
 		} else { # if it's a spikeplot
-			for(i in 1:length(time)) { # 95 percent sig
-				segments(time[i], d.ll95[i], time[i], d.ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
-			}
-			for(i in 1:length(time)) { # 90 percent sig
-				segments(time[i], d.ll90[i], time[i], d.ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
-			}
-			for(i in 1:length(z$time)) { # 75 percent sig
-				segments(time[i], d.ll75[i], time[i], d.ul75[i], lwd = 5, col = "grey30")
+			if(abs.errors != "none") {
+				for(i in 1:length(time)) { # 95 percent sig
+					segments(time[i], d.ll95[i], time[i], d.ul95[i], lwd = 1, col = ifelse(bw == FALSE, "skyblue1", "grey70"))
+				}
+				for(i in 1:length(time)) { # 90 percent sig
+					segments(time[i], d.ll90[i], time[i], d.ul90[i], lwd = 3, col = ifelse(bw == FALSE, "skyblue3", "grey50"))
+				}
+				for(i in 1:length(time)) { # 75 percent sig
+					segments(time[i], d.ll75[i], time[i], d.ul75[i], lwd = 5, col = "grey30")
+				}
 			}
 			# Actual response
 			points(time, d.central, lwd = 4)
@@ -3758,13 +3805,13 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 		} else {
 			warning(paste(paste("Cumulative absolute effects assumed to be noise (by tolerance) at t = "), paste(is.changing.test), paste("."), sep = ""))
 		}
+		if(identical(is.changing, NULL)) { # If Y never responds
+			warning("Y does not move beyond the tolerance in the simulation. Reconsider the tolerance, or investigate if Y responds to the shockvar in the dynardl model.")
+		} else if(is.changing == length(z$d.central)) { # If the simulation isn't long enough, potentially
+			warning("Y might still be changing (has not met tolerance) at the end of the simulation. Consider lengthening the simulation in dynardl or adjusting the tolerance.")
+		}
 	}
-	if(identical(is.changing, NULL)) { # If Y never responds
-		warning("Y does not move beyond the tolerance in the simulation. Reconsider the tolerance, or investigate if Y responds to the shockvar in the dynardl model.")
-	} else if(is.changing == length(z$d.central)) { # If the simulation isn't long enough, potentially
-		warning("Y might still be changing (has not met tolerance) at the end of the simulation. Consider lengthening the simulation in dynardl or adjusting the tolerance.")
-	}
-}	
+}
 
 
 #############################################
@@ -3785,6 +3832,9 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 #' @param last.period when deciding when to stop calculating the absolute value of the shocks to the dependent variable,
 #' you can specify a specific period in which to stop calculating absolute cumulative differences. Specify a \code{tol} or a \code{last.period}.
 #' If both are specified, \code{last.period} overrides \code{tol}
+#' @param abs.errors when calculating confidence for the absolute cumulative effect, should differences accumulate in each time
+#' time period (\code{cumulate}, which could be explosive if the error in the model is large), should differences be observed at each time 
+#' (\code{within.period}, which will have smaller values in equilibrium than when changing), or should only the values be plotted (\code{none})
 #' @param ... other arguments to be passed to the call to plot. Use caution, as they will be passed to all plots
 #' @return a 2 x 3 grid of the plots of the simulated dynardl model effects plots
 #' @details
@@ -3813,19 +3863,19 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 #' dynardl.all.plots(ardl.model, bw = TRUE)	 
 #' @export
 
-dynardl.all.plots <- function(x, type = "area", bw = FALSE, last.period = NULL,  start.period = 1, tol = (abs(x$model$ymean) * 0.01), ...) {
+dynardl.all.plots <- function(x, type = "area", bw = FALSE, last.period = NULL, start.period = 1, tol = (abs(x$model$ymean) * 0.01), abs.errors = "none",...) {
 	par(mfrow = c(2, 3))
 	dynardl.simulation.plot(x, response = "levels", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, ...)
 	dynardl.simulation.plot(x, response = "levels.from.mean", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, ...)
 	dynardl.simulation.plot(x, response = "diffs", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, ...)
 	dynardl.simulation.plot(x, response = "shock.effect.decay", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, ...)
 	dynardl.simulation.plot(x, response = "cumulative.diffs", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, ...)
-	dynardl.simulation.plot(x, response = "cumulative.abs.diffs", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, ...)
+	dynardl.simulation.plot(x, response = "cumulative.abs.diffs", type = type, bw = bw, tol = tol, last.period = last.period, start.period = start.period, abs.errors = abs.errors, ...)
 }
 
 
 ###################################
-# ---(12) dynardl.totaleffect ----#
+# ---(12) dynardl.totaleffect ----#		# HAS NOT BEEN FIXED FOR NEW CHANGE TO CUM. ABS.DIFFS
 ###################################
 dynardl.totaleffect <- function(x, last.period = NULL, tol = (abs(x$model$ymean) * 0.001), round.to = 3, object.out = FALSE) {
 	if(x$model$simulate == FALSE) {

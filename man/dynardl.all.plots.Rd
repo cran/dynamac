@@ -5,7 +5,8 @@
 \title{Combine all of the potential plots of a simulated response in a \code{\link{dynardl}} model}
 \usage{
 dynardl.all.plots(x, type = "area", bw = FALSE, last.period = NULL,
-  start.period = 1, tol = (abs(x$model$ymean) * 0.01), ...)
+  start.period = 1, tol = (abs(x$model$ymean) * 0.01),
+  abs.errors = "none", ...)
 }
 \arguments{
 \item{x}{a \code{dynardl} model with a simulation to be plotted. Since all plots includes absolute cumulative differences, 
@@ -27,6 +28,10 @@ you can specify the minimum amount of movement required to qualify as a non-nois
 (for calculating absolute cumulative differences). The default is 0.1 percent of the mean
 of the dependent variable. Specify a \code{tol} or a \code{last.period}.
 If both are specified, \code{last.period} overrides \code{tol}}
+
+\item{abs.errors}{when calculating confidence for the absolute cumulative effect, should differences accumulate in each time
+time period (\code{cumulate}, which could be explosive if the error in the model is large), should differences be observed at each time 
+(\code{within.period}, which will have smaller values in equilibrium than when changing), or should only the values be plotted (\code{none})}
 
 \item{...}{other arguments to be passed to the call to plot. Use caution, as they will be passed to all plots}
 }

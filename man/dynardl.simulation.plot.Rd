@@ -6,7 +6,7 @@
 \usage{
 dynardl.simulation.plot(x, type = "area", response = "levels",
   bw = FALSE, last.period = NULL, tol = (abs(x$model$ymean) * 0.01),
-  start.period = 1, ylab = "", xlab = "", ...)
+  start.period = 1, abs.errors = "none", ylab = "", xlab = "", ...)
 }
 \arguments{
 \item{x}{a \code{dynardl} model with a simulation to be plotted}
@@ -17,7 +17,8 @@ dynardl.simulation.plot(x, type = "area", response = "levels",
 levels from the mean of the dependent variable (\code{levels.from.mean}), period-over-period changes in the
 dependent variable (\code{diffs}), the absolute value of the (decreasing) change in the dependent variable 
 in each time period due to the shock (\code{shock.effect.decay}), the sum of the period-over-period changes (\code{cumulative.diffs}), 
-or the absolute value of the cumulative differences (\code{cumulative.abs.diffs}). The default is \code{levels}}
+or the absolute value of the cumulative differences (where negative effects are treated as positive) (\code{cumulative.abs.diffs}). 
+The default is \code{levels}}
 
 \item{bw}{should the colors be in black and white (for publication)? The default is \code{FALSE}}
 
@@ -34,6 +35,11 @@ If both are specified, \code{last.period} overrides \code{tol}}
 \item{start.period}{which period of the simulation to begin the plot with. You can view the equilibriating behavior of the
 dependent variable, or you can skip forward in time (maybe to just before the shock). The default is \code{1} 
 (the first period of the simulation)}
+
+\item{abs.errors}{when calculating confidence for the absolute cumulative effect, should differences accumulate in each time
+time period (\code{cumulate}, which could be explosive if the error in the model is large), should differences be observed at each time 
+(\code{within.period}, which will have smaller values in equilibrium than when changing), or should only the values be plotted (\code{none}).
+The default is \code{none}}
 
 \item{ylab}{a user-defined y-label to be used instead of the default}
 
