@@ -71,22 +71,29 @@ length(res2$model$residuals)
 
 ## ------------------------------------------------------------------------
 coef(res2$model)
-# Only the last coefficient is a first lagged level
+# The second coefficient is the LDV, and the last coefficient is also a first lag. So they're both restricted
+
 B <- coef(res2$model)
 V <- vcov(res2$model)
-R <- matrix(c(0, 0, 0, 0, 0, 1), nrow = 1)
-k <- sum(R)
+
+# tag restrictions on LDV and l.1.incshare10
+R <- matrix(c(0, 1, 0, 0, 0, 0, 
+			  0, 0, 0, 0, 0, 1), byrow = T, nrow = 2)
+k.plus1 <- sum(R)
 
 # Restriction is that it is equal to 0
 q <- 0
-fstat <- (1/k)*t(R%*%B-q)%*%solve(R%*%V%*%t(R))%*%(R%*%B-q)	
+fstat <- (1/k.plus1)*t(R%*%B-q)%*%solve(R%*%V%*%t(R))%*%(R%*%B-q)	
 fstat
 
 ## ------------------------------------------------------------------------
-pssbounds(obs = 47, fstat = 6.837322, tstat = -3.684, case = 3, k = 1)
+pssbounds(obs = 47, fstat = 12.20351, tstat = -3.684, case = 3, k = 1)
 
 ## ------------------------------------------------------------------------
 pssbounds(res2)
+
+## ------------------------------------------------------------------------
+pssbounds(res2, restriction = TRUE)
 
 ## ---- eval = FALSE-------------------------------------------------------
 #  res2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
