@@ -4,13 +4,31 @@
 \alias{dynardl}
 \title{Estimate and simulate ARDL model}
 \usage{
-dynardl(formula, data = list(), lags = list(), diffs = c(),
-  lagdiffs = list(), levels = c(), ec = FALSE, trend = FALSE,
-  constant = TRUE, modelout = FALSE, noLDV = FALSE,
-  simulate = FALSE, shockvar = list(),
-  shockval = sd(data[[shockvar]], na.rm = T), time = 10,
-  qoi = "mean", forceset = NULL, range = 20, burnin = 20,
-  sims = 1000, sig = 95, expectedval = FALSE, fullsims = FALSE)
+dynardl(
+  formula,
+  data = list(),
+  lags = list(),
+  diffs = c(),
+  lagdiffs = list(),
+  levels = c(),
+  ec = FALSE,
+  trend = FALSE,
+  constant = TRUE,
+  modelout = FALSE,
+  noLDV = FALSE,
+  simulate = FALSE,
+  shockvar = list(),
+  shockval = sd(data[[shockvar]], na.rm = T),
+  time = 10,
+  qoi = "mean",
+  forceset = NULL,
+  range = 20,
+  burnin = 20,
+  sims = 1000,
+  sig = 95,
+  expectedval = FALSE,
+  fullsims = FALSE
+)
 }
 \arguments{
 \item{formula}{a symbolic description of the model to be estimated. ARDL
@@ -86,7 +104,7 @@ ardl.model.2 <- dynardl(concern ~ incshare10 + urate, data = ineq,
 summary(ardl.model.2)
 
 # Does not work: levels and diffs must appear as a vector
-\donttest{
+\dontrun{
 ardl.model.3 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
        lags = list("concern" = 1, "incshare10" = 1),
        levels = list("urate" = 1),

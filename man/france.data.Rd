@@ -4,13 +4,15 @@
 \name{france.data}
 \alias{france.data}
 \title{Data on French Energy Consumption and GDP}
-\format{A data frame with 53 rows and 4 variables:
+\format{
+A data frame with 53 rows and 4 variables:
 \describe{
   \item{country}{Country}
   \item{year}{Year}
   \item{lnGDP_cons2010USD}{ln(GDP), constant 2010 US dollars}
   \item{lnenergy}{ln(energy consumption), millions tons oil equivalent}
-}}
+}
+}
 \usage{
 data(france.data)
 }

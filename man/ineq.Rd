@@ -4,7 +4,8 @@
 \name{ineq}
 \alias{ineq}
 \title{Data on public concern about economic inequality}
-\format{A data frame with 49 rows and 9 variables:
+\format{
+A data frame with 49 rows and 9 variables:
 \describe{
   \item{year}{Year}
   \item{mood}{Public mood liberalism}
@@ -14,9 +15,10 @@
   \item{incshare10}{Proportion of income of top 10 percent}
   \item{csentiment}{Consumer sentiment}
   \item{incshare01}{Proportion of income of top 1 percent}
-}}
+}
+}
 \source{
-\url{http://dx.doi.org/10.7910/DVN/UYUU9G}
+\doi{10.7910/DVN/UYUU9G}
 }
 \usage{
 data(ineq)

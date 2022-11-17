@@ -4,10 +4,20 @@
 \alias{dynardl.simulation.plot}
 \title{Create a plot of a simulated response in a \code{\link{dynardl}} model}
 \usage{
-dynardl.simulation.plot(x, type = "area", response = "levels",
-  bw = FALSE, last.period = NULL, tol = (abs(x$model$ymean) * 0.01),
-  start.period = 1, abs.errors = "none", ylim = NULL, ylab = NULL,
-  xlab = NULL, ...)
+dynardl.simulation.plot(
+  x,
+  type = "area",
+  response = "levels",
+  bw = FALSE,
+  last.period = NULL,
+  tol = (abs(x$model$ymean) * 0.01),
+  start.period = 1,
+  abs.errors = "none",
+  ylim = NULL,
+  ylab = NULL,
+  xlab = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{a \code{dynardl} model with a simulation to be plotted}
@@ -46,6 +56,8 @@ When running \code{dynardl}, \code{simulate} must be \code{TRUE} so that there i
 \examples{
 # Using the ineq data in dynamac
 # Shocking Income Top 10
+# Not run: simulations are time-intensive to estimate as an example
+\dontrun{
 set.seed(1)
 ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
        lags = list("concern" = 1, "incshare10" = 1),
@@ -61,7 +73,8 @@ dynardl.simulation.plot(ardl.model, response = "levels.from.mean")
 # Same plot, but with spikeplot
 dynardl.simulation.plot(ardl.model, type = "spike", response = "levels.from.mean")  
 # Grayscale plots
-dynardl.simulation.plot(ardl.model, bw = TRUE)	 
+dynardl.simulation.plot(ardl.model, bw = TRUE)
+}	 
 }
 \author{
 Soren Jordan and Andrew Q. Philips

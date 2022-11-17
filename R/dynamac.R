@@ -1,14 +1,9 @@
-# version 0.1.10.9001
-# 4/2/2020
+# version 0.1.12
+# 11/9/2022
 # Authors: Soren Jordan, Andrew Q. Philips
 
 # Corrections since previous version:
-#	Change to pssbounds to allow, but carefully, different cases of models (through restriction = TRUE/FALSE)
-#   Override duplicate input in pssbounds (user + dynardl)
-#   Move pssbounds estimation (fstat) to pssbounds function
-#	Custom ylim to simulation plots
-#	Change default in dynardl to c() for levels and diffs (for clarity)
-#	A lot of new unit tests for functions, especially expected warnings
+#  
 
 # TO DO: 
 #	Do user-specified significances need to be in the plots?
@@ -17,6 +12,12 @@
 #   Add more autocorrelation tests
 #	Automatic lag selection?
 #	ts data?
+#	summary method, predict method, coef method, vcov method
+#	interactions
+#	ADLMA
+#	tidyverse data
+#	Guy's student's starting values things
+#	do not cat the output for pssbounds
 
 ## Deprecated functions file
 #' @title Deprecated functions in package \pkg{dynamac}
@@ -46,7 +47,7 @@ NULL
 #'   \item{csentiment}{Consumer sentiment}
 #'   \item{incshare01}{Proportion of income of top 1 percent}
 #' }
-#' @source \url{http://dx.doi.org/10.7910/DVN/UYUU9G}
+#' @source \doi{10.7910/DVN/UYUU9G}
 #' @docType data
 #' @keywords datasets
 #' @usage data(ineq)
@@ -91,7 +92,7 @@ NULL
 #'   \item{presapp}{Approval of president}
 #'   \item{congapp}{Approval of Congress}
 #' }
-#' @source \url{http://dx.doi.org/10.2307/2669280}
+#' @source \doi{10.2307/2669280}
 #' @docType data
 #' @keywords datasets
 #' @usage data(supreme.sup)
@@ -139,15 +140,9 @@ NULL
 #	expectedval = [FALSE]				expected value of simulation (averaged errors) or predicted value 
 #	fullsims = [FALSE]					store the full, raw simulations in the model object (necessary for some plotting)
 #
-# (5) area.simulation.plot()				<!!!! DEPRECATED !!!!>
-#	x = [no default] 					dynardl object containing a simulation and parameters
-#	response = [levels]					should the plot be in levels of Y (levels) or changes from mean of Y (mean.changes)?	
-#	bw = [FALSE]						should the plot be in black and white?				
+# (5) area.simulation.plot()			<!!!! DEAD as of dynamac 0.1.12 !!!!>		
 #
-# (6) spike.simulation.plot()			<!!!! DEPRECATED !!!!>
-#	x = [no default] 					dynardl object containing a simulation and parameters
-#	response = [levels]					should the plot be in levels of Y (levels) or changes from mean of Y (mean.changes)?	
-#	bw = [FALSE]						should the plot be in black and white?
+# (6) spike.simulation.plot()			<!!!! DEAD as of dynamac 0.1.12 !!!!>
 #
 # (7) pssbounds()
 #	data = [list()]						a dynardl model object
@@ -318,7 +313,7 @@ ldshift <- function(x, l){
 #' summary(ardl.model.2)
 #'
 #' # Does not work: levels and diffs must appear as a vector
-#' \donttest{
+#' \dontrun{
 #' ardl.model.3 <- dynardl(concern ~ incshare10 + urate, data = ineq, 
 #'        lags = list("concern" = 1, "incshare10" = 1),
 #'        levels = list("urate" = 1),
@@ -1356,192 +1351,6 @@ dynardl <- function(formula,
 	class(out) <- "dynardl"  # Apply class dynardl so summary method is called (and for pssbounds)
 	out	# Send data out	
 }
-
-#########################################
-# ------(5) area.simulation.plot -------#
-#########################################
-#' Create an area plot of a simulated response in a dynardl model
-#' @param x a dynardl model with a simulation to be plotted
-#' @param response whether the plot of the response should be shown in levels of the dependent variable (\code{levels}) 
-#' or in changes from the mean of the dependent variable (\code{mean.changes}). The default is \code{levels}
-#' @param bw should the colors be in black and white (for publication)? The default is \code{FALSE}
-#' @return an area plot
-#'
-#' @name dynamac-deprecated
-#' @seealso \code{link{dynamac-deprecated}}
-#' @keywords internal
-NULL
-
-#' @rdname dynamac-deprecated
-#' @section \code{area.simulation.plot}:
-#' For \code{area.simulation.plot}, use \code{\link{dynardl.simulation.plot}}.
-#' 
-#' @importFrom graphics lines plot points polygon segments
-#' @author Soren Jordan and Andrew Q. Philips
-#' @keywords utilities
-#' @export
-
-area.simulation.plot <- function(x, response = "levels", bw = FALSE) {
-	.Deprecated("dynardl.simulation.plot")
-	if(x$model$simulate == FALSE) {
-		stop("dynardl object does not include simulation to plot.")
-	}
-	if(!(response %in% c("levels", "mean.changes"))) {
-		stop("Response must either be plotted in levels ('levels') or in changes from mean of DV ('mean.changes').")
-	}
-	z <- x$simulation
-	if(response == "levels") { # If we're just plotting levels of Y
-		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)), 
-			ylab = "Y Value", xlab = "Time")
-		if(bw == FALSE) {
-			# 95
-			polygon(c(z$time, rev(z$time)), c(z$ul95, rev(z$ll95)), col = "skyblue1", border = NA)
-			# 90
-			polygon(c(z$time, rev(z$time)), c(z$ul90, rev(z$ll90)), col = "skyblue3", border = NA)
-			# 75
-			polygon(c(z$time, rev(z$time)), c(z$ul75, rev(z$ll75)), col = "grey30", border = NA)
-			# Actual response
-			lines(z$time, z$central, lty = 2, lwd = 3)
-		} else {
-			# 95
-			polygon(c(z$time, rev(z$time)), c(z$ul95, rev(z$ll95)), col = "grey70", border = NA)
-			# 90
-			polygon(c(z$time, rev(z$time)), c(z$ul90, rev(z$ll90)), col = "grey50", border = NA)
-			# 75
-			polygon(c(z$time, rev(z$time)), c(z$ul75, rev(z$ll75)), col = "grey30", border = NA)
-			# Actual response
-			lines(z$time, z$central, lty = 2, lwd = 3)	
-		}	
-	} else { # If it's changes from the mean, changes values, same code
-		z$ll95 <- z$ll95 - x$model$ymean
-		z$ul95 <- z$ul95 - x$model$ymean
-		z$ll90 <- z$ll90 - x$model$ymean
-		z$ul90 <- z$ul90 - x$model$ymean
-		z$ll75 <- z$ll75 - x$model$ymean
-		z$ul75 <- z$ul75 - x$model$ymean
-		z$central <- z$central - x$model$ymean
-		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)), 
-			ylab = "Changes from Y Mean Value", xlab = "Time")
-		if(bw == FALSE) {
-			# 95
-			polygon(c(z$time, rev(z$time)), c(z$ul95, rev(z$ll95)), col = "skyblue1", border = NA)
-			# 90
-			polygon(c(z$time, rev(z$time)), c(z$ul90, rev(z$ll90)), col = "skyblue3", border = NA)
-			# 75
-			polygon(c(z$time, rev(z$time)), c(z$ul75, rev(z$ll75)), col = "grey30", border = NA)
-			# Actual response
-			lines(z$time, z$central, lty = 2, lwd = 3)
-		} else {
-			# 95
-			polygon(c(z$time, rev(z$time)), c(z$ul95, rev(z$ll95)), col = "grey70", border = NA)
-			# 90
-			polygon(c(z$time, rev(z$time)), c(z$ul90, rev(z$ll90)), col = "grey50", border = NA)
-			# 75
-			polygon(c(z$time, rev(z$time)), c(z$ul75, rev(z$ll75)), col = "grey30", border = NA)
-			# Actual response
-			lines(z$time, z$central, lty = 2, lwd = 3)	
-		}	
-	}
-}
-
-#########################################
-# ------(6) spike.simulation.plot ------#
-#########################################
-#' Create a spike plot of a simulated response in a dynardl model
-#' @param x a dynardl model with a simulation to be plotted
-#' @param response whether the plot of the response should be shown in levels of the dependent variable (\code{levels}) 
-#' or in changes from the mean of the dependent variable (\code{mean.changes}). The default is \code{levels}
-#' @param bw should the colors be in black and white (for publication)? The default is \code{FALSE}
-#' @return a spike plot
-#'
-#' @name dynamac-deprecated
-#' @seealso \code{link{dynamac-deprecated}}
-#' @keywords internal
-NULL
-
-#' @rdname dynamac-deprecated
-#' @section \code{spike.simulation.plot}:
-#' For \code{spike.simulation.plot}, use \code{\link{dynardl.simulation.plot}}.
-#'
-#' @importFrom graphics lines plot points polygon segments
-#' @author Soren Jordan and Andrew Q. Philips
-#' @keywords utilities
-#' @export
-
-spike.simulation.plot <- function(x, response = "levels", bw = FALSE) {
-	.Deprecated("dynardl.simulation.plot")
-	if(x$model$simulate == FALSE) {
-		stop("dynardl object does not include simulation to plot.")
-	}
-	if(!(response %in% c("levels", "mean.changes"))) {
-		stop("Response must either be plotted in levels ('levels') or in changes from mean of DV ('mean.changes').")
-	}
-	z <- x$simulation
-	if(response == "levels") { # If we're just plotting levels of Y
-		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)), 
-			ylab = "Y Value", xlab = "Time")	
-		if(bw == FALSE) {
-			for(i in 1:length(z$time)) { # 95 percent sig
-				segments(z$time[i], z$ll95[i], z$time[i], z$ul95[i], lwd = 1, col = "skyblue1")
-			}
-			for(i in 1:length(z$time)) { # 90 percent sig
-				segments(z$time[i], z$ll90[i], z$time[i], z$ul90[i], lwd = 3, col = "skyblue3")
-			}
-			for(i in 1:length(z$time)) { # 75 percent sig
-				segments(z$time[i], z$ll75[i], z$time[i], z$ul75[i], lwd = 5, col = "grey30")
-			}
-			# Actual response
-			points(z$time, z$central, lwd = 4)
-		} else {
-			for(i in 1:length(z$time)) { # 95 percent sig
-				segments(z$time[i], z$ll95[i], z$time[i], z$ul95[i], lwd = 1, col = "grey70")
-			}
-			for(i in 1:length(z$time)) { # 90 percent sig
-				segments(z$time[i], z$ll90[i], z$time[i], z$ul90[i], lwd = 3, col = "grey50")
-			}
-			for(i in 1:length(z$time)) { # 75 percent sig
-				segments(z$time[i], z$ll75[i], z$time[i], z$ul75[i], lwd = 5, col = "grey30")
-			}
-			# Actual response
-			points(z$time, z$central, lwd = 4)	
-		}
-	} else {	 # If it's changes from the mean, changes values, same code
-		z$ll95 <- z$ll95 - x$model$ymean
-		z$ul95 <- z$ul95 - x$model$ymean
-		z$ll90 <- z$ll90 - x$model$ymean
-		z$ul90 <- z$ul90 - x$model$ymean
-		z$ll75 <- z$ll75 - x$model$ymean
-		z$ul75 <- z$ul75 - x$model$ymean
-		z$central <- z$central - x$model$ymean
-		plot(z$time, z$ll95, type = "n", ylim = c(min(z$ll95), max(z$ul95)), 
-			ylab = "Changes from Y Mean Value", xlab = "Time")	
-		if(bw == FALSE) {
-			for(i in 1:length(z$time)) { # 95 percent sig
-				segments(z$time[i], z$ll95[i], z$time[i], z$ul95[i], lwd = 1, col = "skyblue1")
-			}
-			for(i in 1:length(z$time)) { # 90 percent sig
-				segments(z$time[i], z$ll90[i], z$time[i], z$ul90[i], lwd = 3, col = "skyblue3")
-			}
-			for(i in 1:length(z$time)) { # 75 percent sig
-				segments(z$time[i], z$ll75[i], z$time[i], z$ul75[i], lwd = 5, col = "grey30")
-			}
-			# Actual response
-			points(z$time, z$central, lwd = 4)
-		} else {
-			for(i in 1:length(z$time)) { # 95 percent sig
-				segments(z$time[i], z$ll95[i], z$time[i], z$ul95[i], lwd = 1, col = "grey70")
-			}
-			for(i in 1:length(z$time)) { # 90 percent sig
-				segments(z$time[i], z$ll90[i], z$time[i], z$ul90[i], lwd = 3, col = "grey50")
-			}
-			for(i in 1:length(z$time)) { # 75 percent sig
-				segments(z$time[i], z$ll75[i], z$time[i], z$ul75[i], lwd = 5, col = "grey30")
-			}
-			# Actual response
-			points(z$time, z$central, lwd = 4)	
-		}
-	}
-}	
 
 ##########################################
 # ------------(7) pssbounds -------------#
@@ -3549,6 +3358,8 @@ summary.dynardl <- function(object, ...) {
 #' @examples
 #' # Using the ineq data in dynamac
 #' # Shocking Income Top 10
+#' # Not run: simulations are time-intensive to estimate as an example
+#' \dontrun{
 #' set.seed(1)
 #' ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
 #'        lags = list("concern" = 1, "incshare10" = 1),
@@ -3564,7 +3375,8 @@ summary.dynardl <- function(object, ...) {
 #' # Same plot, but with spikeplot
 #' dynardl.simulation.plot(ardl.model, type = "spike", response = "levels.from.mean")  
 #' # Grayscale plots
-#' dynardl.simulation.plot(ardl.model, bw = TRUE)	 
+#' dynardl.simulation.plot(ardl.model, bw = TRUE)
+#' }	 
 #' @export
 
 dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = FALSE, last.period = NULL, tol = (abs(x$model$ymean) * 0.01), start.period = 1, abs.errors = "none", ylim = NULL, ylab = NULL, xlab = NULL, ...) {
@@ -3915,6 +3727,8 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 #' @examples
 #' # Using the ineq data in dynamac
 #' # Shocking Income Top 10
+#' # Not run: simulations are time-intensive to estimate as an example
+#' \dontrun{
 #' set.seed(1)
 #' ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
 #'        lags = list("concern" = 1, "incshare10" = 1),
@@ -3929,6 +3743,7 @@ dynardl.simulation.plot <- function(x, type = "area", response = "levels", bw = 
 #' dynardl.all.plots(ardl.model, type = "spike")  
 #' # Grayscale plots
 #' dynardl.all.plots(ardl.model, bw = TRUE)	 
+#' }
 #' @export
 
 dynardl.all.plots <- function(x, type = "area", bw = FALSE, last.period = NULL, start.period = 1, tol = (abs(x$model$ymean) * 0.01), abs.errors = "none", ylim = NULL, xlab = NULL, ylab = NULL, ...) {

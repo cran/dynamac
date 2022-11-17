@@ -4,9 +4,19 @@
 \alias{dynardl.all.plots}
 \title{Combine all of the potential plots of a simulated response in a \code{\link{dynardl}} model}
 \usage{
-dynardl.all.plots(x, type = "area", bw = FALSE, last.period = NULL,
-  start.period = 1, tol = (abs(x$model$ymean) * 0.01),
-  abs.errors = "none", ylim = NULL, xlab = NULL, ylab = NULL, ...)
+dynardl.all.plots(
+  x,
+  type = "area",
+  bw = FALSE,
+  last.period = NULL,
+  start.period = 1,
+  tol = (abs(x$model$ymean) * 0.01),
+  abs.errors = "none",
+  ylim = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{a \code{dynardl} model with a simulation to be plotted. Since all plots includes absolute cumulative differences, \code{fullsims} must be \code{TRUE} in the \code{dynardl} simulation}
@@ -43,6 +53,8 @@ When running \code{dynardl}, \code{simulate} must be \code{TRUE} so that there i
 \examples{
 # Using the ineq data in dynamac
 # Shocking Income Top 10
+# Not run: simulations are time-intensive to estimate as an example
+\dontrun{
 set.seed(1)
 ardl.model <- dynardl(concern ~ incshare10 + urate, data = ineq, 
        lags = list("concern" = 1, "incshare10" = 1),
@@ -57,6 +69,7 @@ dynardl.all.plots(ardl.model)
 dynardl.all.plots(ardl.model, type = "spike")  
 # Grayscale plots
 dynardl.all.plots(ardl.model, bw = TRUE)	 
+}
 }
 \author{
 Soren Jordan and Andrew Q. Philips

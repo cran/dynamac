@@ -4,7 +4,8 @@
 \name{supreme.sup}
 \alias{supreme.sup}
 \title{Data on US Supreme Court Approval}
-\format{A data frame with 42 rows and 9 variables:
+\format{
+A data frame with 42 rows and 9 variables:
 \describe{
   \item{dcalc}{Supreme Court support}
   \item{l_dcalc}{Lagged Supreme Court spport}
@@ -15,9 +16,10 @@
   \item{laws}{Laws declared unconstitutional}
   \item{presapp}{Approval of president}
   \item{congapp}{Approval of Congress}
-}}
+}
+}
 \source{
-\url{http://dx.doi.org/10.2307/2669280}
+\doi{10.2307/2669280}
 }
 \usage{
 data(supreme.sup)
